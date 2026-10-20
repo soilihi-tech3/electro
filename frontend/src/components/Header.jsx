@@ -510,9 +510,7 @@ export default function Header({ setCartOpen: setCartOpenProp }) {
             <Link to="/a-propos" style={{ fontSize: 14.5, fontWeight: 700, color: location.pathname === "/a-propos" ? "var(--forest)" : "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s ease", whiteSpace: "nowrap" }}>
               <Info size={16} /> À propos
             </Link>
-            <Link to="/recharge-mobile" style={{ fontSize: 14.5, fontWeight: 700, color: location.pathname === "/recharge-mobile" ? "var(--forest)" : "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s ease", whiteSpace: "nowrap" }}>
-              <Smartphone size={16} /> Recharge Crédit
-            </Link>
+
             <Link to="/catalogue" style={{ fontSize: 14.5, fontWeight: 700, color: location.pathname === "/catalogue" && !location.search.includes("favoris=1") ? "var(--forest)" : "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s ease", whiteSpace: "nowrap" }}>
               <Grid size={16} /> Catalogue
             </Link>
@@ -625,10 +623,7 @@ export default function Header({ setCartOpen: setCartOpenProp }) {
           <span>Catalogue</span>
         </Link>
 
-        <Link to="/recharge-mobile" className={`bs-mobile-nav-item ${location.pathname === "/recharge-mobile" ? "active" : ""}`}>
-          <Smartphone size={20} />
-          <span>Recharge</span>
-        </Link>
+
 
         <button className="bs-mobile-nav-item" onClick={() => setCartOpen(true)}>
           <div style={{ position: "relative", display: "flex" }}>

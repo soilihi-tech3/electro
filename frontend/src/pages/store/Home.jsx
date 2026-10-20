@@ -366,44 +366,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* BANNIÈRE PROMOTIONNELLE RECHARGE CRÉDIT COMORES (YAS / HURY) */}
-      <div 
-        onClick={() => navigate("/recharge-mobile")}
-        style={{
-          background: "linear-gradient(135deg, #163424 0%, #2D8653 100%)",
-          borderRadius: 16,
-          padding: "16px 24px",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 16,
-          margin: "0 0 32px",
-          cursor: "pointer",
-          boxShadow: "0 6px 20px rgba(22, 52, 36, 0.15)",
-          flexWrap: "wrap"
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.15)",
-            backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
-          }}>
-            <Smartphone size={24} color="#A7F3D0" />
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: "#fff" }}>
-              Recharge Crédit & Internet Comores 🇰🇲
-            </div>
-            <div style={{ fontSize: 13, color: "#DDE8DF" }}>
-              Rechargez instantanément les lignes <strong>Yas (Telma)</strong> ou <strong>Comores Telecom (Hury)</strong>
-            </div>
-          </div>
-        </div>
-        <button className="bs-btn-primary" style={{ background: "#ffffff", color: "#163424", fontWeight: 800, padding: "8px 18px", borderRadius: 20, fontSize: 13, border: "none" }}>
-          Recharger en 1-clic <ArrowRight size={14} />
-        </button>
-      </div>
+
 
       {/* ---- CATÉGORIES VISUELLES ---- */}
       <div className="bs-section-title">

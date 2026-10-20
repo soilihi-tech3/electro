@@ -51,7 +51,6 @@ export default function AdminLayout() {
     { to: "/admin/commandes", label: "Commandes", icon: ShoppingCart, permKey: ["valider_commande", "changer_statut_commande", "assigner_commande", "gerer_commandes"], moduleKey: "commandes" },
     { to: "/admin/clients", label: "Clients", icon: UserCheck, permKey: ["gerer_commandes", "gerer_utilisateurs", "voir_dashboard"] },
     { to: "/admin/employes", label: "Équipe & Rôles", icon: Users, adminOnly: true, moduleKey: "employes" },
-    { to: "/admin/recharges", label: "Recharges Mobiles", icon: PhoneCall, permKey: "gerer_parametres", moduleKey: "recharges" },
     { to: "/admin/parametres", label: "Paramètres Boutique", icon: Store, permKey: "gerer_parametres", moduleKey: "parametres" },
   ];
 

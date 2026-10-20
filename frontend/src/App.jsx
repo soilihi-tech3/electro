@@ -3,7 +3,7 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Header from "./components/Header.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
-import RechargeMobile from "./pages/store/RechargeMobile.jsx";
+
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -32,7 +32,7 @@ const AdminOrders = React.lazy(() => import("./pages/admin/Orders.jsx"));
 const AdminEmployees = React.lazy(() => import("./pages/admin/Employees.jsx"));
 const AdminClients = React.lazy(() => import("./pages/admin/Clients.jsx"));
 const AdminSettings = React.lazy(() => import("./pages/admin/Settings.jsx"));
-const AdminRecharge = React.lazy(() => import("./pages/admin/AdminRecharge.jsx"));
+
 
 const VenteDirecte = React.lazy(() => import("./pages/admin/VenteDirecte.jsx"));
 const Fournisseurs = React.lazy(() => import("./pages/admin/Fournisseurs.jsx"));
@@ -124,7 +124,6 @@ export default function App() {
         {/* --- Boutique (front-office) --- */}
         <Route path="/" element={<StoreLayout><Home /></StoreLayout>} />
         <Route path="/a-propos" element={<StoreLayout><About /></StoreLayout>} />
-        <Route path="/recharge-mobile" element={<WideLayout><RechargeMobile /></WideLayout>} />
         <Route path="/catalogue" element={<StoreLayout><Catalogue /></StoreLayout>} />
         <Route path="/produit/:id" element={<StoreLayout><ProductDetail /></StoreLayout>} />
         <Route path="/connexion" element={<StoreLayout><Login /></StoreLayout>} />
@@ -159,7 +158,7 @@ export default function App() {
           <Route path="commandes" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminOrders /></React.Suspense>} />
           <Route path="clients" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminClients /></React.Suspense>} />
           <Route path="employes" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminEmployees /></React.Suspense>} />
-          <Route path="recharges" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminRecharge /></React.Suspense>} />
+
 
           <Route path="utilisateurs" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminEmployees /></React.Suspense>} />
           <Route path="parametres" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminSettings defaultTab="general" /></React.Suspense>} />

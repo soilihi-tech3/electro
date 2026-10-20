@@ -4,21 +4,21 @@
   --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-heading: 'Playfair Display', serif;
   
-  --ink: #192019;
-  --paper: #F6F8F5;
+  --ink: #0F172A;
+  --paper: #F8FAFC;
   --card: #FFFFFF;
-  --forest: #224B35;
-  --forest-dark: #163424;
-  --forest-light: #EBF2ED;
-  --accent: #D97724;
-  --accent-light: #FDF4EB;
-  --sage: #7E9788;
-  --line: #E2E8E3;
-  --muted: #64746A;
+  --forest: #1E60D5;
+  --forest-dark: #123B88;
+  --forest-light: #EBF3FE;
+  --accent: #E07A10;
+  --accent-light: #FEF6EB;
+  --sage: #64748B;
+  --line: #E2E8F0;
+  --muted: #64748B;
   
-  --shadow-sm: 0 2px 8px rgba(34, 75, 53, 0.04);
-  --shadow-md: 0 6px 20px rgba(34, 75, 53, 0.08);
-  --shadow-lg: 0 12px 32px rgba(34, 75, 53, 0.12);
+  --shadow-sm: 0 2px 8px rgba(30, 96, 213, 0.05);
+  --shadow-md: 0 6px 20px rgba(30, 96, 213, 0.08);
+  --shadow-lg: 0 12px 32px rgba(30, 96, 213, 0.12);
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 22px;
@@ -26,15 +26,15 @@
 
 html[data-theme="dark"] {
   --ink: #F8FAFC;
-  --paper: #0F172A;
-  --card: #1E293B;
-  --forest: #10B981;
-  --forest-dark: #0F172A;
-  --forest-light: #334155;
+  --paper: #0B132B;
+  --card: #1C2541;
+  --forest: #3B82F6;
+  --forest-dark: #0B132B;
+  --forest-light: #243356;
   --accent: #F59E0B;
   --accent-light: #332B1E;
   --sage: #94A3B8;
-  --line: #334155;
+  --line: #2D3A5E;
   --muted: #94A3B8;
   
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
@@ -1100,15 +1100,15 @@ html[data-theme="dark"] .bs-operator-logo-box img {
 
 .bs-side-btn.active {
   background: #ffffff;
-  color: #163424;
+  color: #123B88;
   font-weight: 700;
 }
 
 html[data-theme="dark"] .bs-side-btn.active {
-  background: #10B981 !important;
-  color: #0F172A !important;
+  background: #3B82F6 !important;
+  color: #0B132B !important;
   font-weight: 800 !important;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35) !important;
 }
 
 html[data-theme="dark"] .bs-side-btn.active .bs-side-icon,
