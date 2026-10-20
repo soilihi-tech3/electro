@@ -24,7 +24,7 @@ const getBaseUrl = () => {
   return url;
 };
 
-export const SLUG = import.meta.env.VITE_BOUTIQUE_SLUG || "marche-vert";
+export const SLUG = import.meta.env.VITE_BOUTIQUE_SLUG || "electro-pro";
 const api = axios.create({ baseURL: getBaseUrl() });
 
 api.interceptors.request.use((config) => {
