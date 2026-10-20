@@ -9,10 +9,10 @@ import { useData } from "../../context/DataContext.jsx";
 const DEFAULT_SLIDES = [
   {
     id: 1,
-    title: "Le frais & le naturel livrés chez vous",
-    subtitle: "Légumes, fruits, épicerie et cosmétiques bio sélectionnés avec soin.",
-    imageUrl: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=1600&q=80",
-    buttonText: "Voir le catalogue",
+    title: "Électricité, Électronique & Matériel Pro",
+    subtitle: "Large gamme d'accessoires électriques, prises, disjoncteurs et câblage haute sécurité.",
+    imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=2560&q=90",
+    buttonText: "Découvrir le catalogue",
     linkUrl: "/catalogue"
   }
 ];
@@ -292,14 +292,7 @@ export default function Home() {
   return (
     <>
       {/* ---- HERO SLIDER DYNAMIQUE ADMIN (ANIMATION SLIDE HORIZONTALE ET CHARGEMENT INSTANTANÉ) ---- */}
-      <div className="bs-slider" style={{ 
-        margin: "20px 0 32px", 
-        borderRadius: 16, 
-        height: 360,
-        overflow: "hidden",
-        position: "relative",
-        boxShadow: "0 8px 30px rgba(0,0,0,0.08)"
-      }}>
+      <div className="bs-slider">
         <div 
           className="bs-slider-track"
           style={{
