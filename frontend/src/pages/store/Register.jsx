@@ -118,7 +118,7 @@ export default function Register() {
     try {
       await verifyOtp(targetContact.email, targetContact.telephone, otpCode);
       setVerified(true);
-      setSucces("Vérification réussie ! Bienvenue 🎉");
+      setSucces("Vérification réussie ! Bienvenue sur notre boutique.");
       setTimeout(() => navigate("/"), 1500);
     } catch (err) {
       setErreur(err.response?.data?.message || "Code OTP incorrect ou expiré.");

@@ -338,7 +338,7 @@ export default function AdminProduits() {
               <input 
                 className="bs-input" 
                 style={{ flex: 1, minWidth: 200 }} 
-                placeholder="🔍 Rechercher un produit, catégorie ou marque..." 
+                placeholder="Rechercher un produit, catégorie ou marque..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
               />
@@ -359,8 +359,8 @@ export default function AdminProduits() {
                 onChange={(e) => setFilterEtat(e.target.value)}
               >
                 <option value="">Tous les états</option>
-                <option value="neuf">✨ Neuf</option>
-                <option value="occasion">♻️ Occasion</option>
+                <option value="neuf">Neuf</option>
+                <option value="occasion">Occasion</option>
               </select>
 
               <select 
@@ -435,7 +435,7 @@ export default function AdminProduits() {
                           background: "#FFFBEB", color: "#B45309", border: "1.5px solid #FDE68A",
                           padding: "3px 9px", borderRadius: 12, fontSize: 11.5, fontWeight: 800 
                         }}>
-                          ♻️ Occasion
+                          Occasion
                         </span>
                       ) : (
                         <span style={{ 
@@ -443,7 +443,7 @@ export default function AdminProduits() {
                           background: "#F0FDFA", color: "#0F766E", border: "1.5px solid #99F6E4",
                           padding: "3px 9px", borderRadius: 12, fontSize: 11.5, fontWeight: 800 
                         }}>
-                          ✨ Neuf
+                          Neuf
                         </span>
                       )}
                     </td>
@@ -542,7 +542,7 @@ export default function AdminProduits() {
                       onChange={() => set("etat", "neuf")} 
                       style={{ display: "none" }}
                     />
-                    ✨ Neuf (Jamais servi)
+                    Neuf (Jamais servi)
                   </label>
                   <label style={{
                     flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -560,7 +560,7 @@ export default function AdminProduits() {
                       onChange={() => set("etat", "occasion")} 
                       style={{ display: "none" }}
                     />
-                    ♻️ Occasion (2nde main)
+                    Occasion (2nde main)
                   </label>
                 </div>
               </div>

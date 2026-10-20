@@ -227,7 +227,7 @@ export default function PWAInstallPrompt() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ background: "var(--forest)", color: "#fff", width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>2</div>
-                <span>Faites défiler vers le bas et sélectionnez <strong>« Sur l'écran d'accueil »</strong> ➕.</span>
+                <span>Faites défiler vers le bas et sélectionnez <strong>« Sur l'écran d'accueil »</strong>.</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ background: "var(--forest)", color: "#fff", width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>3</div>

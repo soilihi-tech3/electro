@@ -94,7 +94,7 @@ export default function BoutiquesTab({
                       </code>
                       {b.customDomain && (
                         <span style={{ fontSize: 11, color: "var(--forest)", fontWeight: 600 }}>
-                          🌐 {b.customDomain}
+                          {b.customDomain}
                         </span>
                       )}
                     </div>

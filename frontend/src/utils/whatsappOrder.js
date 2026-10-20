@@ -8,15 +8,15 @@ export function formatWhatsAppOrderMessage({ boutique, user, cart, subtotal, fra
   const dateStr = new Date().toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 
   let text = `Bonjour *${storeName}* !\n\n`;
-  text += `🛒 *NOUVELLE COMMANDE* ${orderNumber ? `(#${orderNumber})` : ""}\n`;
+  text += `*NOUVELLE COMMANDE* ${orderNumber ? `(#${orderNumber})` : ""}\n`;
   text += `-----------------------------------\n`;
-  text += `👤 *Informations du client :*\n`;
+  text += `*Informations du client :*\n`;
   text += `- Nom : ${clientName}\n`;
   if (user?.telephone) text += `- Téléphone : ${user.telephone}\n`;
   if (user?.email) text += `- Email : ${user.email}\n`;
   text += `- Date : ${dateStr}\n\n`;
 
-  text += `🚚 *Mode de livraison :*\n`;
+  text += `*Mode de livraison :*\n`;
   if (form.modeLivraison === "retrait") {
     text += `- Retrait en boutique (Gratuit)\n`;
     text += `- Point de retrait : ${boutique?.adresseRetrait || boutique?.adresse || "Boutique"}\n\n`;
@@ -33,11 +33,11 @@ export function formatWhatsAppOrderMessage({ boutique, user, cart, subtotal, fra
       carte: "Carte bancaire / En ligne",
       whatsapp: "Paiement / Validation sur WhatsApp"
     };
-    text += `💳 *Moyen de paiement sélectionné :*\n`;
+    text += `*Moyen de paiement sélectionné :*\n`;
     text += `- ${paymentLabels[form.moyenPaiement] || form.moyenPaiement}\n\n`;
   }
 
-  text += `📦 *Détail des articles commandés :*\n`;
+  text += `*Détail des articles commandés :*\n`;
 
   cart.forEach((l, index) => {
     const prix = l.product.prixPromo || l.product.prix;
@@ -54,7 +54,7 @@ export function formatWhatsAppOrderMessage({ boutique, user, cart, subtotal, fra
   const subtotalFormatted = formatPrice(subtotal, boutique?.devise);
   const totalFormatted = formatPrice(total || subtotal, boutique?.devise);
 
-  text += `\n💰 *Résumé financier :*\n`;
+  text += `\n*Résumé financier :*\n`;
   text += `- Sous-total : ${subtotalFormatted}\n`;
   if (fraisLivraison !== undefined && fraisLivraison !== 0 && fraisLivraison !== "0") {
     const fraisFormatted = isNaN(Number(fraisLivraison)) ? fraisLivraison : formatPrice(fraisLivraison, boutique?.devise);

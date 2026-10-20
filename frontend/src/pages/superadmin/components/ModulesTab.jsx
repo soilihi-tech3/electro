@@ -72,10 +72,10 @@ export default function ModulesTab({
               color: selectedBoutiqueId === "global" ? "var(--forest-dark)" : "var(--accent)", cursor: "pointer"
             }}
           >
-            <option value="global">🌐 TOUTES les boutiques (Mode Global)</option>
+            <option value="global">TOUTES les boutiques (Mode Global)</option>
             <optgroup label="Boutiques individuelles">
               {safeBoutiques.map(b => (
-                <option key={b.id} value={b.id}>🏪 {b.nom} (ID #{b.id})</option>
+                <option key={b.id} value={b.id}>{b.nom} (ID #{b.id})</option>
               ))}
             </optgroup>
           </select>

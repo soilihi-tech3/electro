@@ -65,7 +65,7 @@ export default function Checkout() {
           <img
             src="https://paytech.sn/assets/srcs/img/wave-logo.png"
             alt="Wave" style={{ height: 28, objectFit: "contain" }}
-            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "🌊", style: "font-size:24px" })); }}
+            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "Wave", style: "font-size:14px;font-weight:700" })); }}
           />
           <span style={{ fontSize: 9, background: "#0EA5E9", color: "#fff", padding: "2px 5px", borderRadius: 6, fontWeight: 700 }}>PayTech</span>
         </div>
@@ -80,7 +80,7 @@ export default function Checkout() {
           <img
             src="https://paytech.sn/assets/srcs/img/orange-money-logo.png"
             alt="Orange Money" style={{ height: 28, objectFit: "contain" }}
-            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "🟠", style: "font-size:24px" })); }}
+            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "Orange", style: "font-size:14px;font-weight:700" })); }}
           />
           <span style={{ fontSize: 9, background: "#F97316", color: "#fff", padding: "2px 5px", borderRadius: 6, fontWeight: 700 }}>PayTech</span>
         </div>
@@ -395,7 +395,7 @@ export default function Checkout() {
                     </div>
                     {boutique?.horairesOuverture && (
                       <div style={{ fontSize: 13, marginTop: 8, color: "var(--sage)", fontWeight: 600 }}>
-                        🕒 Horaires : {boutique.horairesOuverture}
+                        Horaires : {boutique.horairesOuverture}
                       </div>
                     )}
                   </div>

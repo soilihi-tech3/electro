@@ -241,11 +241,11 @@ export default function About() {
               <Phone size={18} /> Téléphones & Assistance
             </div>
             <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600 }}>
-              📞 {boutique?.telephone || "+33 1 23 45 67 89"}
+              {boutique?.telephone || "+33 1 23 45 67 89"}
             </div>
             {boutique?.telephone2 && (
               <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, marginTop: 6 }}>
-                📞 {boutique.telephone2}
+                {boutique.telephone2}
               </div>
             )}
           </div>
@@ -256,7 +256,7 @@ export default function About() {
               <Mail size={18} /> Contact Email
             </div>
             <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, wordBreak: "break-word" }}>
-              ✉️ {boutique?.emailContact || "contact@marchevert.com"}
+              {boutique?.emailContact || "contact@marchevert.com"}
             </div>
           </div>
         </div>

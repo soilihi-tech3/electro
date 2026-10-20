@@ -291,7 +291,7 @@ export default function Footer() {
         <div style={{ maxWidth: 1280, margin: "0 auto 24px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 20 }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "#7B9686", fontWeight: 800 }}>
-              🔒 Paiement 100% Sécurisé & Modes de règlement acceptés :
+              Paiement 100% Sécurisé & Modes de règlement acceptés :
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
 

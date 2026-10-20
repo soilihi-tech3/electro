@@ -248,17 +248,17 @@ export default function AdminSettings({ defaultTab = "general" }) {
             </div>
 
             <div className="bs-field">
-              <label>💰 Devise de la boutique</label>
+              <label>Devise de la boutique</label>
               <select 
                 className="bs-input" 
                 value={boutique.devise || "KMF"} 
                 onChange={(e) => set("devise", e.target.value)}
                 style={{ fontWeight: 700, color: "var(--forest-dark)" }}
               >
-                <option value="KMF">🇰🇲 Franc Comorien (KMF)</option>
-                <option value="EUR">🇪🇺 Euro (€)</option>
-                <option value="FCFA">🌍 Franc CFA (FCFA)</option>
-                <option value="USD">🇺🇸 Dollar US ($)</option>
+                <option value="KMF">Franc Comorien (KMF)</option>
+                <option value="EUR">Euro (€)</option>
+                <option value="FCFA">Franc CFA (FCFA)</option>
+                <option value="USD">Dollar US ($)</option>
               </select>
             </div>
 
@@ -305,7 +305,7 @@ export default function AdminSettings({ defaultTab = "general" }) {
           </div>
 
           <div className="bs-field" style={{ marginTop: 16 }}>
-            <label style={{ fontWeight: 700, color: "var(--forest-dark)" }}>📍 Adresse & Instructions détaillées pour le Point de Retrait en Boutique</label>
+            <label style={{ fontWeight: 700, color: "var(--forest-dark)" }}>Adresse & Instructions détaillées pour le Point de Retrait en Boutique</label>
             <p style={{ margin: "2px 0 8px", fontSize: 12.5, color: "var(--muted)" }}>
               Décrivez exactement où se trouve la boutique (ex: repères, étage, numéro de porte) pour les clients qui choisissent "Retrait en boutique".
             </p>
@@ -635,8 +635,8 @@ export default function AdminSettings({ defaultTab = "general" }) {
               { key: "mvola", label: "Mvola", sub: "Paiement mobile Money Mvola", Icon: Smartphone },
               { key: "holam", label: "Wero", sub: "Paiement instantané européen Wero", Icon: Smartphone },
               { key: "carte", label: "Carte Bancaire (Stripe)", sub: "Paiement en ligne Visa / Mastercard", Icon: CreditCard },
-              { key: "wave", label: "Wave 🌊", sub: "Paiement mobile Wave via PayTech — Afrique de l'Ouest", Icon: Smartphone },
-              { key: "orange", label: "Orange Money 🟠", sub: "Paiement mobile Orange via PayTech — Afrique de l'Ouest", Icon: Smartphone },
+              { key: "wave", label: "Wave", sub: "Paiement mobile Wave via PayTech — Afrique de l'Ouest", Icon: Smartphone },
+              { key: "orange", label: "Orange Money", sub: "Paiement mobile Orange via PayTech — Afrique de l'Ouest", Icon: Smartphone },
             ].map((item) => {
               const isEnabled = !!modesPaiement[item.key];
               return (
@@ -741,7 +741,7 @@ export default function AdminSettings({ defaultTab = "general" }) {
           {(modesPaiement.wave || modesPaiement.orange) && (
             <div style={{ background: "#F0FFF4", border: "1.5px solid #0EA5E9", borderRadius: 16, padding: 22, marginTop: 20 }}>
               <h4 style={{ margin: "0 0 8px", fontSize: 16, color: "#0369A1", display: "flex", alignItems: "center", gap: 8 }}>
-                🌊 Clés API PayTech — Wave & Orange Money
+                Clés API PayTech — Wave & Orange Money
               </h4>
               <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--muted)" }}>
                 Ces clés sont configurées dans le fichier <code>.env</code> de votre backend. Récupérez-les depuis votre tableau de bord PayTech.
@@ -749,7 +749,7 @@ export default function AdminSettings({ defaultTab = "general" }) {
 
               {/* Lien vers le tableau de bord PayTech */}
               <div style={{ background: "#EBF8FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>🔑</span>
+                <Key size={18} color="#0369A1" />
                 <div>
                   <strong>Comment obtenir vos clés PayTech :</strong><br />
                   <span style={{ color: "#0369A1" }}>1. Connectez-vous sur <a href="https://paytech.sn" target="_blank" rel="noopener noreferrer" style={{ color: "#0EA5E9", fontWeight: 700 }}>paytech.sn</a></span><br />
@@ -785,7 +785,7 @@ export default function AdminSettings({ defaultTab = "general" }) {
               {/* URL IPN à configurer dans PayTech */}
               <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 10, padding: "12px 16px", marginTop: 14, fontSize: 13 }}>
                 <div style={{ fontWeight: 700, color: "#C2410C", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                  ⚠️ À configurer dans votre tableau de bord PayTech :
+                  À configurer dans votre tableau de bord PayTech :
                 </div>
                 <div style={{ color: "#92400E", lineHeight: 1.6 }}>
                   Allez dans <strong>Paramètres → API & APN → URL de Notification Instantanée (IPN)</strong><br />

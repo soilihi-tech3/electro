@@ -312,7 +312,7 @@ export default function Catalogue() {
                 transition: "all 0.2s"
               }}
             >
-              ✨ Matériel Neuf
+              Matériel Neuf
             </button>
 
             <button
@@ -336,7 +336,7 @@ export default function Catalogue() {
                 transition: "all 0.2s"
               }}
             >
-              ♻️ Occasion (Reconditionné)
+              Occasion (Reconditionné)
             </button>
           </div>
         </div>

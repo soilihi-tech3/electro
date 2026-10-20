@@ -391,7 +391,7 @@ async function envoyerEmailCreationCompte(email, nomUtilisateur, identifiant, te
     const html = `
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #f8fafc; border-radius: 16px;">
         <div style="background: #163424; padding: 24px; border-radius: 12px; text-align: center; color: #ffffff; margin-bottom: 20px;">
-          <h2 style="margin: 0; font-size: 22px;">🎉 Bienvenue sur ${boutiqueNom}</h2>
+          <h2 style="margin: 0; font-size: 22px;">Bienvenue sur ${boutiqueNom}</h2>
           <p style="margin: 8px 0 0; opacity: 0.9; font-size: 14px;">Votre compte ${roleLabel} a été créé avec succès</p>
         </div>
         <div style="background: #ffffff; padding: 28px; border-radius: 12px; border: 1px solid #e2e8f0;">
@@ -405,7 +405,7 @@ async function envoyerEmailCreationCompte(email, nomUtilisateur, identifiant, te
             <div style="font-size: 14px; color: #475569;"><strong>Mot de passe générique :</strong> <span style="color: #163424; font-family: monospace; font-size: 16px; font-weight: bold; background: #e2e8f0; padding: 2px 8px; border-radius: 6px;">${tempPassword}</span></div>
           </div>
           <p style="font-size: 13px; color: #b45309; background: #fef3c7; padding: 12px 14px; border-radius: 8px; font-weight: 600;">
-            ⚠️ Lors de votre 1ère connexion, un changement de mot de passe vous sera automatiquement demandé pour sécuriser votre compte.
+            Important : Lors de votre 1ère connexion, un changement de mot de passe vous sera automatiquement demandé pour sécuriser votre compte.
           </p>
           <div style="text-align: center; margin-top: 28px;">
             <a href="${connUrl}" style="background: #2D8653; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 30px; font-weight: bold; font-size: 15px; display: inline-block;">Se connecter à mon compte</a>

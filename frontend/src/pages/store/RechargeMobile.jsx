@@ -462,7 +462,7 @@ export default function RechargeMobile() {
                         position: "absolute", top: -9, right: 10, background: rec.promo ? "#E11D48" : "#F59E0B", color: "#fff",
                         fontSize: 9.5, fontWeight: 800, padding: "2px 6px", borderRadius: 8, textTransform: "uppercase"
                       }}>
-                        {rec.promo ? "🔥 Promo" : "⭐️ Populaire"}
+                        {rec.promo ? "Promo" : "Populaire"}
                       </span>
                     )}
                     <div style={{ fontSize: 20, fontWeight: 900 }}>{rec.kmf.toLocaleString("fr-FR")} KMF</div>
@@ -518,7 +518,7 @@ export default function RechargeMobile() {
               padding: "10px 14px", marginBottom: 12, fontSize: 12.5, color: "#166534",
               display: "flex", alignItems: "flex-start", gap: 8
             }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
+              <span style={{ fontSize: 13, flexShrink: 0, fontWeight: 700 }}>Paiement :</span>
               <span>
                 <strong>Paiement sécurisé via PayTech</strong> — Wave et Orange Money sont traités par PayTech, une passerelle de paiement certifiée pour l'Afrique de l'Ouest.
               </span>
@@ -726,7 +726,7 @@ export default function RechargeMobile() {
                     return;
                   }
                   
-                  const msg = `Bonjour, je viens de payer *${paymentModalData.amountEur.toFixed(2)} €* via *Wero* pour une recharge.\n\n📱 *Détails :*\n- ${paymentModalData.operatorName}\n- Numéro à recharger : *${paymentModalData.phone}*\n- Commande : *COM-B${String(paymentModalData.orderId).padStart(3, '0')}*\n\nJe vous joins la capture d'écran de la transaction pour validation !`;
+                  const msg = `Bonjour, je viens de payer *${paymentModalData.amountEur.toFixed(2)} €* via *Wero* pour une recharge.\n\n*Détails :*\n- ${paymentModalData.operatorName}\n- Numéro à recharger : *${paymentModalData.phone}*\n- Commande : *COM-B${String(paymentModalData.orderId).padStart(3, '0')}*\n\nJe vous joins la capture d'écran de la transaction pour validation !`;
                   
                   window.open(`https://wa.me/${cleanWaNum}?text=${encodeURIComponent(msg)}`, "_blank");
                   setShowPaymentModal(false);

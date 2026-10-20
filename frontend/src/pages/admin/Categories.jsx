@@ -285,7 +285,7 @@ export default function AdminCategories() {
               <input 
                 className="bs-input" 
                 style={{ flex: 1, maxWidth: 400 }} 
-                placeholder="🔍 Rechercher une catégorie..." 
+                placeholder="Rechercher une catégorie..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
               />
@@ -356,7 +356,7 @@ export default function AdminCategories() {
       {activeTab === "ajout" && (
         <div className="bs-panel" style={{ maxWidth: 600, margin: "0 auto" }}>
           <h3 style={{ marginTop: 0, fontSize: 20, color: "var(--forest-dark)", borderBottom: "1px solid var(--line)", paddingBottom: 12, marginBottom: 20 }}>
-            {editingId ? "✏️ Modifier la catégorie" : "➕ Créer une nouvelle catégorie"}
+            {editingId ? "Modifier la catégorie" : "Créer une nouvelle catégorie"}
           </h3>
 
           <form onSubmit={handleCategorySubmit} className="bs-auth-form" style={{ gap: 16 }}>
@@ -440,7 +440,7 @@ export default function AdminCategories() {
           {/* FORMULAIRE D'AJOUT / MODIFICATION DE FAMILLE */}
           <div className="bs-panel">
             <h3 style={{ marginTop: 0, fontSize: 18, color: "var(--forest-dark)", borderBottom: "1px solid var(--line)", paddingBottom: 10, marginBottom: 16 }}>
-              {editingFamilleId ? "✏️ Modifier la famille" : "➕ Ajouter une famille de produit"}
+              {editingFamilleId ? "Modifier la famille" : "Ajouter une famille de produit"}
             </h3>
 
             <form onSubmit={handleFamilleSubmit} className="bs-auth-form" style={{ gap: 14 }}>

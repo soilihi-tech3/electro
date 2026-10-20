@@ -257,7 +257,7 @@ export default function ProductDetail() {
                 background: "#FFFBEB", color: "#B45309", border: "1.5px solid #FDE68A",
                 padding: "3px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800 
               }}>
-                ♻️ Matériel Occasion (2nde main)
+                Matériel Occasion (2nde main)
               </span>
             ) : (
               <span style={{ 
@@ -265,7 +265,7 @@ export default function ProductDetail() {
                 background: "#F0FDFA", color: "#0F766E", border: "1.5px solid #99F6E4",
                 padding: "3px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800 
               }}>
-                ✨ Matériel Neuf
+                Matériel Neuf
               </span>
             )}
           </div>
