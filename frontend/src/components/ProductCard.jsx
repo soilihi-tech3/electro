@@ -194,7 +194,7 @@ export default function ProductCard({ product, isFavorisPage }) {
           >
             <ShoppingCart size={15} /> 
             {isOutOfStock 
-              ? (isExpired ? "Expiré" : "Épuisé") 
+              ? "Épuisé" 
               : isMaxStockReached 
               ? `Stock max (${qtyInCart}/${product.stock})` 
               : "Ajouter au panier"}
