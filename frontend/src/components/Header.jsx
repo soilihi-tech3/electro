@@ -526,8 +526,8 @@ export default function Header({ setCartOpen: setCartOpenProp }) {
         </div>
 
         {/* ROW 3: SECONDARY CATEGORIES BAR & GALLERY */}
-        <div style={{ background: "var(--paper)", borderBottom: "1px solid var(--line)", padding: "8px 24px" }}>
-          <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ background: "var(--paper)", borderBottom: "1px solid var(--line)", padding: "8px 24px", width: "100%", boxSizing: "border-box", overflow: "hidden" }}>
+          <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, width: "100%", boxSizing: "border-box" }}>
 
             {/* DROPDOWN BUTTON FOR ALL CATEGORIES */}
             <div ref={categoriesRef} style={{ position: "relative", flexShrink: 0 }}>
@@ -583,7 +583,7 @@ export default function Header({ setCartOpen: setCartOpenProp }) {
             </div>
 
             {/* HORIZONTAL GALLERY / PILL LIST OF CATEGORIES */}
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none", padding: "4px 0" }}>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", msOverflowStyle: "none", padding: "4px 0", flex: 1, minWidth: 0 }}>
               {categories.map((cat) => (
                 <button
                   key={cat.id}

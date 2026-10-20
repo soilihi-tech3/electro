@@ -11,8 +11,24 @@ const DEFAULT_SLIDES = [
     id: 1,
     title: "Électricité, Électronique & Matériel Pro",
     subtitle: "Large gamme d'accessoires électriques, prises, disjoncteurs et câblage haute sécurité.",
-    imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=2560&q=90",
+    imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1600&q=80",
     buttonText: "Découvrir le catalogue",
+    linkUrl: "/catalogue"
+  },
+  {
+    id: 2,
+    title: "Climatisation & Ventilation Haute Performance",
+    subtitle: "Climatiseurs split Inverter et ventilateurs puissants pour un confort thermique optimal.",
+    imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1600&q=80",
+    buttonText: "Voir les climatiseurs",
+    linkUrl: "/catalogue"
+  },
+  {
+    id: 3,
+    title: "Outillage & Équipements de Construction",
+    subtitle: "Tout pour vos chantiers, installations électriques et travaux de bâtiment.",
+    imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1600&q=80",
+    buttonText: "Commander maintenant",
     linkUrl: "/catalogue"
   }
 ];
@@ -28,6 +44,16 @@ const parseSlides = (bannerSlides) => {
     }
   }
   if (Array.isArray(parsed) && parsed.length > 0) {
+    // Purge old grocery/cosmetics demo cache from before electrical conversion
+    const isOldDemo = parsed.some(s => 
+      s.title?.toLowerCase().includes("cosmétique") || 
+      s.title?.toLowerCase().includes("beauté") || 
+      s.title?.toLowerCase().includes("légume") ||
+      s.imageUrl?.includes("photo-1542838132")
+    );
+    if (isOldDemo) {
+      return DEFAULT_SLIDES;
+    }
     return parsed;
   }
   return DEFAULT_SLIDES;
@@ -171,17 +197,19 @@ export default function Home() {
   const navigate = useNavigate();
 
   function loadData(force = false) {
+    api.get(`/store/${SLUG}`).then((res) => {
+      if (res.data) {
+        setBoutique(res.data);
+        try {
+          localStorage.setItem(`cached_boutique_${SLUG}`, JSON.stringify(res.data));
+        } catch (e) {}
+      }
+    }).catch(() => {});
+
     if (!force && !isStale(`categories:${SLUG}`) && categories.length > 0 && products.length > 0) {
       // Data is fresh in cache, no un-necessary refetch!
       return;
     }
-
-    api.get(`/store/${SLUG}`).then((res) => {
-      setBoutique(res.data);
-      try {
-        localStorage.setItem(`cached_boutique_${SLUG}`, JSON.stringify(res.data));
-      } catch (e) {}
-    }).catch(() => {});
 
     api.get(`/store/${SLUG}/categories`).then((res) => {
       if (Array.isArray(res.data)) {

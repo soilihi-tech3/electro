@@ -95,8 +95,8 @@ router.get("/:slug/manifest.json", loadBoutique, (req, res) => {
   });
 });
 
-// GET /api/store/:slug  -> infos publiques de la boutique (cached 5 min)
-router.get("/:slug", loadBoutique, cacheMiddleware(300), (req, res) => {
+// GET /api/store/:slug and /api/store/:slug/boutique -> infos publiques de la boutique (cached 300)
+router.get(["/:slug", "/:slug/boutique"], loadBoutique, cacheMiddleware(300), (req, res) => {
   const b = req.boutique;
   res.json({
     id: b.id, nom: b.nom, slug: b.slug, logoUrl: b.logoUrl,
