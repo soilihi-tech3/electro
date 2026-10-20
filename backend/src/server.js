@@ -256,9 +256,12 @@ async function ensureColumns() {
       console.log("[MIGRATION] Ajout colonne etat sur products");
       await sequelize.query(`ALTER TABLE products ADD COLUMN etat VARCHAR(20) DEFAULT 'neuf';`);
     }
-    if (!tableProducts["marqueId"] && !tableProducts["marque_id"]) {
-      console.log("[MIGRATION] Ajout colonne marqueId sur products");
-      await sequelize.query(`ALTER TABLE products ADD COLUMN marqueId INT NULL;`);
+    if (tableProducts["marqueId"] && !tableProducts["marque_id"]) {
+      console.log("[MIGRATION] Renommage marqueId en marque_id sur products");
+      await sequelize.query(`ALTER TABLE products CHANGE COLUMN marqueId marque_id INT NULL;`);
+    } else if (!tableProducts["marque_id"]) {
+      console.log("[MIGRATION] Ajout colonne marque_id sur products");
+      await sequelize.query(`ALTER TABLE products ADD COLUMN marque_id INT NULL;`);
     }
 
     const tableOrders = await queryInterface.describeTable("orders");

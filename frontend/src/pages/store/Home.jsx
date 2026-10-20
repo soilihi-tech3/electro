@@ -331,20 +331,20 @@ export default function Home() {
 
         {slides.length > 1 && (
           <>
-            <div className="bs-slider-arrows">
-              <button 
-                className="bs-slider-arrow" 
-                onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length); }}
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <button 
-                className="bs-slider-arrow" 
-                onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev + 1) % slides.length); }}
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
+            <button 
+              className="bs-slider-arrow left" 
+              onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length); }}
+              aria-label="Diapositive précédente"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <button 
+              className="bs-slider-arrow right" 
+              onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev + 1) % slides.length); }}
+              aria-label="Diapositive suivante"
+            >
+              <ChevronRight size={22} />
+            </button>
 
             <div className="bs-slider-dots">
               {slides.map((_, idx) => (
@@ -357,72 +357,6 @@ export default function Home() {
             </div>
           </>
         )}
-      </div>
-
-
-
-      {/* ---- ACCÈS DIRECT ÉTAT (NEUF / OCCASION) ---- */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-        gap: 16,
-        margin: "0 0 32px"
-      }}>
-        <div
-          onClick={() => navigate("/catalogue?etat=neuf")}
-          style={{
-            background: "linear-gradient(135deg, #0F766E 0%, #0D9488 100%)",
-            color: "#fff",
-            padding: "18px 22px",
-            borderRadius: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            cursor: "pointer",
-            boxShadow: "0 6px 20px rgba(13, 148, 136, 0.22)",
-            transition: "all 0.25s ease"
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-3px)"}
-          onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-        >
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
-              ✨ Matériel Neuf
-            </div>
-            <div style={{ fontSize: 12.5, opacity: 0.92, marginTop: 3 }}>
-              Appareils & accessoires neufs d'origine certifiée
-            </div>
-          </div>
-          <ArrowRight size={22} style={{ flexShrink: 0, marginLeft: 12 }} />
-        </div>
-
-        <div
-          onClick={() => navigate("/catalogue?etat=occasion")}
-          style={{
-            background: "linear-gradient(135deg, #B45309 0%, #D97706 100%)",
-            color: "#fff",
-            padding: "18px 22px",
-            borderRadius: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            cursor: "pointer",
-            boxShadow: "0 6px 20px rgba(217, 119, 6, 0.22)",
-            transition: "all 0.25s ease"
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-3px)"}
-          onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-        >
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
-              ♻️ Matériel Occasion
-            </div>
-            <div style={{ fontSize: 12.5, opacity: 0.92, marginTop: 3 }}>
-              Équipements d'occasion contrôlés & testés à prix réduit
-            </div>
-          </div>
-          <ArrowRight size={22} style={{ flexShrink: 0, marginLeft: 12 }} />
-        </div>
       </div>
 
       {/* ---- CATÉGORIES VISUELLES ---- */}
