@@ -315,16 +315,6 @@ export default function AdminProduits() {
                 <span style={{ fontSize: 12, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>Alertes Stock</span>
                 <span style={{ fontSize: 24, fontWeight: 800, color: "#B4483A" }}>{products.filter(p => p.stock <= p.seuilAlerte).length}</span>
               </div>
-              <div style={{ width: 1, background: "var(--line)" }}></div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 12, color: "#D97706", textTransform: "uppercase", fontWeight: 700 }}>Bientôt Expirés</span>
-                <span style={{ fontSize: 24, fontWeight: 800, color: "#D97706" }}>{bientotExpiresCount}</span>
-              </div>
-              <div style={{ width: 1, background: "var(--line)" }}></div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 12, color: "#DC2626", textTransform: "uppercase", fontWeight: 700 }}>Déjà Expirés</span>
-                <span style={{ fontSize: 24, fontWeight: 800, color: "#DC2626" }}>{expiresCount}</span>
-              </div>
             </div>
             
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>

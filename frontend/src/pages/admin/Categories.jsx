@@ -19,7 +19,7 @@ export default function AdminCategories() {
 
   const initialCategoryForm = {
     nom: "",
-    famille: "Alimentation",
+    famille: "Électronique",
     imageUrl: ""
   };
   const [categoryForm, setCategoryForm] = useState(initialCategoryForm);
