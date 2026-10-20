@@ -18,10 +18,13 @@ export default function Catalogue() {
   const categoryId = params.get("categoryId") || "";
   const famille = params.get("famille") || "";
   const search = params.get("search") || "";
+  const etat = params.get("etat") || "";
+  const marqueId = params.get("marqueId") || "";
   const onlyFavoris = params.get("favoris") === "1";
 
-  const cacheKey = `products:${SLUG}:${categoryId}:${famille}:${search}`;
+  const cacheKey = `products:${SLUG}:${categoryId}:${famille}:${search}:${etat}:${marqueId}`;
 
+  const [marques, setMarques] = useState([]);
   const [categories, setCategories] = useState(() => {
     const cached = getData(`categories:${SLUG}`);
     if (cached && Array.isArray(cached) && cached.length > 0) return cached;
@@ -32,7 +35,7 @@ export default function Catalogue() {
   });
 
   const [products, setProducts] = useState(() => {
-    const cached = getData(cacheKey) || getData(`products:${SLUG}:::`);
+    const cached = getData(cacheKey) || getData(`products:${SLUG}:::::`);
     if (cached && Array.isArray(cached) && cached.length > 0) return cached;
     try {
       const ls = localStorage.getItem(`cached_products_${SLUG}`);
@@ -51,7 +54,11 @@ export default function Catalogue() {
   // Scroll to top on filter change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [categoryId, famille, search, onlyFavoris]);
+  }, [categoryId, famille, search, etat, marqueId, onlyFavoris]);
+
+  useEffect(() => {
+    api.get(`/store/${SLUG}/marques`).then((res) => setMarques(res.data || [])).catch(() => {});
+  }, []);
 
   // User-scoped favorites sync
   useEffect(() => {
@@ -82,7 +89,7 @@ export default function Catalogue() {
   }
 
   function loadProducts(force = false) {
-    const ck = `products:${SLUG}:${categoryId}:${famille}:${search}`;
+    const ck = `products:${SLUG}:${categoryId}:${famille}:${search}:${etat}:${marqueId}`;
     if (!force && !isStale(ck)) {
       const cached = getData(ck);
       if (cached && Array.isArray(cached) && cached.length > 0) {
@@ -99,12 +106,14 @@ export default function Catalogue() {
     if (categoryId) query.categoryId = categoryId;
     if (famille) query.famille = famille;
     if (search) query.search = search;
+    if (etat) query.etat = etat;
+    if (marqueId) query.marqueId = marqueId;
     api.get(`/store/${SLUG}/products`, { params: query })
       .then((res) => {
         setData(ck, res.data, 120000);
         setProducts(res.data);
         // Persist base catalogue to localStorage for instant load next time
-        if (!categoryId && !famille && !search) {
+        if (!categoryId && !famille && !search && !etat && !marqueId) {
           try { localStorage.setItem(`cached_products_${SLUG}`, JSON.stringify(res.data)); } catch(e) {}
         }
         setLoading(false);
@@ -118,7 +127,7 @@ export default function Catalogue() {
 
   useEffect(() => {
     loadProducts(false);
-  }, [categoryId, famille, search]);
+  }, [categoryId, famille, search, etat, marqueId]);
 
   useEffect(() => {
     const unsub = subscribeRealtime((detail) => {
@@ -131,7 +140,7 @@ export default function Catalogue() {
       }
     });
     return unsub;
-  }, [categoryId, famille, search, invalidate]);
+  }, [categoryId, famille, search, etat, marqueId, invalidate]);
 
   const stripAccents = (str) =>
     (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -139,7 +148,14 @@ export default function Catalogue() {
   let displayedProducts = products;
   if (onlyFavoris) {
     displayedProducts = displayedProducts.filter((p) => favIds.includes(p.id));
-  } else if (famille) {
+  }
+  if (etat) {
+    displayedProducts = displayedProducts.filter((p) => p.etat === etat);
+  }
+  if (marqueId) {
+    displayedProducts = displayedProducts.filter((p) => String(p.marqueId) === String(marqueId));
+  }
+  if (famille) {
     const fClean = stripAccents(famille);
     displayedProducts = displayedProducts.filter((p) => {
       const pFam = stripAccents(p.Category?.famille || p.famille);
@@ -234,6 +250,157 @@ export default function Catalogue() {
             <div className="bs-cat-name">{c.nom}</div>
           </div>
         ))}
+      </div>
+
+      {/* ---- FILTRES ÉTAT (NEUF / OCCASION) & MARQUES ---- */}
+      <div style={{
+        margin: "18px 0 24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        background: "var(--card)",
+        padding: "16px 20px",
+        borderRadius: 18,
+        border: "1px solid var(--line)",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.03)"
+      }}>
+        {/* LIGNE 1 : SÉLECTION ÉTAT */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--forest-dark)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            État du matériel :
+          </span>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              onClick={() => {
+                const next = new URLSearchParams(params);
+                next.delete("etat");
+                setParams(next);
+              }}
+              style={{
+                padding: "7px 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                border: !etat ? "2px solid var(--forest)" : "1px solid var(--line)",
+                background: !etat ? "var(--forest)" : "var(--paper)",
+                color: !etat ? "#fff" : "var(--ink)",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              Tous les produits
+            </button>
+
+            <button
+              onClick={() => {
+                const next = new URLSearchParams(params);
+                next.set("etat", "neuf");
+                setParams(next);
+              }}
+              style={{
+                padding: "7px 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                border: etat === "neuf" ? "2px solid #0D9488" : "1px solid var(--line)",
+                background: etat === "neuf" ? "#0D9488" : "var(--paper)",
+                color: etat === "neuf" ? "#fff" : "var(--ink)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.2s"
+              }}
+            >
+              ✨ Matériel Neuf
+            </button>
+
+            <button
+              onClick={() => {
+                const next = new URLSearchParams(params);
+                next.set("etat", "occasion");
+                setParams(next);
+              }}
+              style={{
+                padding: "7px 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 700,
+                border: etat === "occasion" ? "2px solid #D97706" : "1px solid var(--line)",
+                background: etat === "occasion" ? "#D97706" : "var(--paper)",
+                color: etat === "occasion" ? "#fff" : "var(--ink)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.2s"
+              }}
+            >
+              ♻️ Occasion (Reconditionné)
+            </button>
+          </div>
+        </div>
+
+        {/* LIGNE 2 : SÉLECTION MARQUES */}
+        {marques.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 10, borderTop: "1px dashed var(--line)" }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: "var(--forest-dark)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Marques :
+            </span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                onClick={() => {
+                  const next = new URLSearchParams(params);
+                  next.delete("marqueId");
+                  setParams(next);
+                }}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 14,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  border: !marqueId ? "1.5px solid var(--forest)" : "1px solid var(--line)",
+                  background: !marqueId ? "var(--forest-light)" : "var(--paper)",
+                  color: !marqueId ? "var(--forest-dark)" : "var(--muted)",
+                  cursor: "pointer"
+                }}
+              >
+                Toutes les marques
+              </button>
+
+              {marques.map(m => {
+                const isSelected = String(marqueId) === String(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      const next = new URLSearchParams(params);
+                      if (isSelected) next.delete("marqueId");
+                      else next.set("marqueId", m.id);
+                      setParams(next);
+                    }}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 14,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      border: isSelected ? "1.5px solid var(--forest)" : "1px solid var(--line)",
+                      background: isSelected ? "var(--forest-light)" : "var(--paper)",
+                      color: isSelected ? "var(--forest-dark)" : "var(--ink)",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    {m.logoUrl && <img src={m.logoUrl} alt="" style={{ width: 14, height: 14, objectFit: "contain" }} />}
+                    {m.nom}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Section header */}

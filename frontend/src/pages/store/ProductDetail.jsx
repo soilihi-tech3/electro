@@ -232,8 +232,42 @@ export default function ProductDetail() {
 
         {/* INFOS PRODUIT */}
         <div>
-          <div style={{ color: "var(--sage)", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
-            {product.Category?.nom}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+            <span style={{ color: "var(--sage)", fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {product.Category?.nom || "Électrique"}
+            </span>
+
+            {(product.marque?.nom || product.Marque?.nom) && (
+              <span style={{ 
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "var(--forest-light)", color: "var(--forest-dark)", 
+                padding: "3px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800,
+                border: "1px solid var(--line)"
+              }}>
+                {(product.marque?.logoUrl || product.Marque?.logoUrl) && (
+                  <img src={product.marque?.logoUrl || product.Marque?.logoUrl} alt="" style={{ width: 16, height: 16, objectFit: "contain" }} />
+                )}
+                Marque : {product.marque?.nom || product.Marque?.nom}
+              </span>
+            )}
+
+            {product.etat === "occasion" ? (
+              <span style={{ 
+                display: "inline-flex", alignItems: "center", gap: 5,
+                background: "#FFFBEB", color: "#B45309", border: "1.5px solid #FDE68A",
+                padding: "3px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800 
+              }}>
+                ♻️ Matériel Occasion (2nde main)
+              </span>
+            ) : (
+              <span style={{ 
+                display: "inline-flex", alignItems: "center", gap: 5,
+                background: "#F0FDFA", color: "#0F766E", border: "1.5px solid #99F6E4",
+                padding: "3px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800 
+              }}>
+                ✨ Matériel Neuf
+              </span>
+            )}
           </div>
           <h1 style={{ fontSize: 32, margin: "0 0 12px", color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 12 }}>
             {product.nom}

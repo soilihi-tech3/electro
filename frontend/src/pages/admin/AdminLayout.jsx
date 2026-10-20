@@ -3,7 +3,7 @@ import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-do
 import { 
   LayoutDashboard, Package, ShoppingCart, Users, Store, LogOut, Layers, 
   PanelLeftClose, PanelLeftOpen, User, Image, LayoutGrid, CreditCard, 
-  ShoppingBag, Truck, Scale, History, Menu, X, ExternalLink, ArrowLeft, Clock, Lock, UserCheck, Sun, Moon, PhoneCall
+  ShoppingBag, Truck, Scale, History, Menu, X, ExternalLink, ArrowLeft, Clock, Lock, UserCheck, Sun, Moon, PhoneCall, Award
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
@@ -17,6 +17,7 @@ const ROUTE_MODULE_MAP = {
   "/admin/achats": { key: "achats", label: "Achats & Stocks" },
   "/admin/fournisseurs": { key: "fournisseurs", label: "Fournisseurs" },
   "/admin/unites": { key: "unites", label: "Unités de vente" },
+  "/admin/marques": { key: "marques", label: "Marques" },
   "/admin/home-banners": { key: "homeBanners", label: "Home Banners" },
   "/admin/side-banners": { key: "sideBanners", label: "Home Side Banners" },
   "/admin/categories": { key: "categories", label: "Catégories" },
@@ -46,6 +47,7 @@ export default function AdminLayout() {
     { to: "/admin/achats", label: "Achats & Stocks", icon: ShoppingBag, permKey: ["gerer_produits", "gerer_parametres"], moduleKey: "achats" },
     { to: "/admin/fournisseurs", label: "Fournisseurs", icon: Truck, permKey: ["gerer_produits", "gerer_parametres"], moduleKey: "fournisseurs" },
     { to: "/admin/unites", label: "Unités de vente", icon: Scale, permKey: ["gerer_produits", "gerer_categories"], moduleKey: "unites" },
+    { to: "/admin/marques", label: "Marques", icon: Award, permKey: ["gerer_categories", "gerer_produits"] },
     { to: "/admin/categories", label: "Catégories", icon: Layers, permKey: "gerer_categories", moduleKey: "categories" },
     { to: "/admin/produits", label: "Produits", icon: Package, permKey: ["ajouter_produit", "modifier_produit", "supprimer_produit", "gerer_produits"], moduleKey: "produits" },
     { to: "/admin/commandes", label: "Commandes", icon: ShoppingCart, permKey: ["valider_commande", "changer_statut_commande", "assigner_commande", "gerer_commandes"], moduleKey: "commandes" },

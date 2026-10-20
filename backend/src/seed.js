@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const { Boutique, User, Category, Product, Order, OrderItem, Review } = require("./models");
+const { Boutique, User, Category, Product, Order, OrderItem, Review, Marque } = require("./models");
 
 /**
  * Insère les données de démonstration et tous les comptes utilisateurs de manière sécurisée et répétable.
@@ -64,6 +64,24 @@ async function runSeed() {
     }
   });
 
+  // --- 3.b Marques Référencées ---
+  const marquesData = [
+    { nom: "Schneider Electric", description: "Spécialiste mondial de la gestion de l'énergie et de la distribution électrique." },
+    { nom: "Legrand", description: "Leader des infrastructures électriques et réseaux d'information du bâtiment." },
+    { nom: "Philips", description: "Éclairage LED innovant, ampoules et projecteurs basse consommation." },
+    { nom: "Panasonic", description: "Climatisation réversible et ventilation haute performance." },
+    { nom: "Bosch", description: "Outillage électroportatif professionnel et technologies de construction." }
+  ];
+
+  const marquesMap = {};
+  for (const m of marquesData) {
+    const [mObj] = await Marque.findOrCreate({
+      where: { nom: m.nom, boutiqueId: boutique.id },
+      defaults: { ...m, boutiqueId: boutique.id }
+    });
+    marquesMap[m.nom] = mObj;
+  }
+
   // --- 4. Comptes Administrateur, Employés & Client ---
   const usersToSeed = [
     { email: "superadmin@boutique-saas.com", nom: "Super Admin", role: "super_admin", pw: "SuperAdmin123!" },
@@ -120,62 +138,62 @@ async function runSeed() {
   // --- 6. Produits ---
   const produitsData = [
     {
-      nom: "Climatiseur Split 12000 BTU Inverter", cat: "Climatisation & Froid", prix: 185000, prixPromo: 169000, unite: "unité", stock: 12, seuilAlerte: 3, coutAchat: 140000, ventesCount: 8,
+      nom: "Climatiseur Split 12000 BTU Inverter", cat: "Climatisation & Froid", marque: "Panasonic", etat: "neuf", prix: 185000, prixPromo: 169000, unite: "unité", stock: 12, seuilAlerte: 3, coutAchat: 140000, ventesCount: 8,
       description: "Climatiseur Split haute efficacité énergétique A++, gaz écologique R32, télécommande incluse et mode silencieux.",
       imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Ventilateur sur Pied Turbo 16\" Silencieux", cat: "Ventilation", prix: 18500, prixPromo: 15900, unite: "pièce", stock: 35, seuilAlerte: 8, coutAchat: 11000, ventesCount: 24,
+      nom: "Ventilateur sur Pied Turbo 16\" Silencieux", cat: "Ventilation", marque: "Panasonic", etat: "neuf", prix: 18500, prixPromo: 15900, unite: "pièce", stock: 35, seuilAlerte: 8, coutAchat: 11000, ventesCount: 24,
       description: "Ventilateur robuste à 3 vitesses, oscillation 90 degrés, hauteur réglable et consommation réduite.",
       imageUrl: "https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Ventilateur Plafonnier 3 Pales 56\"", cat: "Ventilation", prix: 24500, unite: "unité", stock: 20, seuilAlerte: 5, coutAchat: 17000, ventesCount: 15,
-      description: "Brasseur d'air plafonnier ultra puissant avec régulateur mural 5 vitesses.",
+      nom: "Ventilateur Plafonnier 3 Pales 56\"", cat: "Ventilation", marque: "Panasonic", etat: "occasion", prix: 24500, unite: "unité", stock: 20, seuilAlerte: 5, coutAchat: 17000, ventesCount: 15,
+      description: "Brasseur d'air plafonnier ultra puissant avec régulateur mural 5 vitesses (Occasion bon état vérifiée).",
       imageUrl: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Lot de 5 Ampoules LED 15W E27 Blanc Chaud", cat: "Éclairage & Ampoules", prix: 6500, prixPromo: 5500, unite: "lot", stock: 60, seuilAlerte: 15, coutAchat: 3500, ventesCount: 42,
+      nom: "Lot de 5 Ampoules LED 15W E27 Blanc Chaud", cat: "Éclairage & Ampoules", marque: "Philips", etat: "neuf", prix: 6500, prixPromo: 5500, unite: "lot", stock: 60, seuilAlerte: 15, coutAchat: 3500, ventesCount: 42,
       description: "Ampoules LED ultra économiques équivalent 100W, longue durée de vie 25 000 heures.",
       imageUrl: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Projecteur LED Extérieur 50W IP66", cat: "Éclairage & Ampoules", prix: 14000, unite: "pièce", stock: 25, seuilAlerte: 5, coutAchat: 9000, ventesCount: 11,
+      nom: "Projecteur LED Extérieur 50W IP66", cat: "Éclairage & Ampoules", marque: "Philips", etat: "neuf", prix: 14000, unite: "pièce", stock: 25, seuilAlerte: 5, coutAchat: 9000, ventesCount: 11,
       description: "Projecteur LED étanche en aluminium pour cour, jardin et façades de bâtiment.",
       imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Prise Murale Étanche 16A 2P+T", cat: "Prises & Interrupteurs", prix: 2500, unite: "pièce", stock: 80, seuilAlerte: 20, coutAchat: 1400, ventesCount: 65,
+      nom: "Prise Murale Étanche 16A 2P+T", cat: "Prises & Interrupteurs", marque: "Legrand", etat: "neuf", prix: 2500, unite: "pièce", stock: 80, seuilAlerte: 20, coutAchat: 1400, ventesCount: 65,
       description: "Prise murale avec clapet de protection IP55 conforme aux normes de sécurité internationales.",
       imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Multiprise Parafoudre 6 Prises + 2 Ports USB", cat: "Prises & Interrupteurs", prix: 8500, prixPromo: 7200, unite: "pièce", stock: 30, seuilAlerte: 8, coutAchat: 4800, ventesCount: 19,
-      description: "Protection contre les surtensions, câble renforcé 2 mètres et interrupteur lumineux.",
+      nom: "Multiprise Parafoudre 6 Prises + 2 Ports USB", cat: "Prises & Interrupteurs", marque: "Legrand", etat: "occasion", prix: 8500, prixPromo: 7200, unite: "pièce", stock: 30, seuilAlerte: 8, coutAchat: 4800, ventesCount: 19,
+      description: "Protection contre les surtensions, câble renforcé 2 mètres et interrupteur lumineux (Occasion reconditionnée).",
       imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Rouleau Câble Électrique TH 2.5mm² (100m)", cat: "Câbles & Protection", prix: 28000, unite: "rouleau", stock: 18, seuilAlerte: 5, coutAchat: 21000, ventesCount: 14,
+      nom: "Rouleau Câble Électrique TH 2.5mm² (100m)", cat: "Câbles & Protection", marque: "Schneider Electric", etat: "neuf", prix: 28000, unite: "rouleau", stock: 18, seuilAlerte: 5, coutAchat: 21000, ventesCount: 14,
       description: "Fil conducteur cuivre rigide standard pour prises de courant et installations domestiques.",
       imageUrl: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Disjoncteur Différentiel 32A Monophasé", cat: "Câbles & Protection", prix: 9500, unite: "pièce", stock: 40, seuilAlerte: 10, coutAchat: 6200, ventesCount: 22,
+      nom: "Disjoncteur Différentiel 32A Monophasé", cat: "Câbles & Protection", marque: "Schneider Electric", etat: "neuf", prix: 9500, unite: "pièce", stock: 40, seuilAlerte: 10, coutAchat: 6200, ventesCount: 22,
       description: "Disjoncteur de protection magnétothermique 32A courbe C pour tableau électrique.",
       imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Perceuse Visseuse Sans Fil 18V avec Coffret", cat: "Outillage & Construction", prix: 45000, prixPromo: 39500, unite: "coffret", stock: 15, seuilAlerte: 4, coutAchat: 28000, ventesCount: 9,
-      description: "Perceuse percussion sans fil 18V livrée avec 2 batteries Li-ion, chargeur rapide et 24 accessoires.",
+      nom: "Perceuse Visseuse Sans Fil 18V avec Coffret", cat: "Outillage & Construction", marque: "Bosch", etat: "occasion", prix: 45000, prixPromo: 39500, unite: "coffret", stock: 15, seuilAlerte: 4, coutAchat: 28000, ventesCount: 9,
+      description: "Perceuse percussion sans fil 18V avec 2 batteries et chargeur rapide (Occasion reconditionnée pro).",
       imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=600&q=80",
       imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     }
@@ -188,16 +206,27 @@ async function runSeed() {
   
   if (nbProduitsExistant === 0) {
     for (const p of produitsData) {
-      const { cat, ...rest } = p;
+      const { cat, marque, ...rest } = p;
       const catObj = cats[cat];
-      const prodObj = await Product.create({ ...rest, boutiqueId: boutique.id, categoryId: catObj ? catObj.id : null });
+      const marqueObj = marquesMap[marque];
+      const prodObj = await Product.create({ 
+        ...rest, 
+        boutiqueId: boutique.id, 
+        categoryId: catObj ? catObj.id : null,
+        marqueId: marqueObj ? marqueObj.id : null
+      });
       produits[p.nom] = prodObj;
     }
   } else {
-    // Ne pas recréer de produits si la base de données n'est pas vide (pour ne pas restaurer les suppressions !)
+    // Si produits déjà existants, s'assurer que marqueId et etat sont renseignés
     for (const p of produitsData) {
       const prodObj = await Product.findOne({ where: { nom: p.nom, boutiqueId: boutique.id } });
       if (prodObj) {
+        const marqueObj = marquesMap[p.marque];
+        await prodObj.update({
+          marqueId: prodObj.marqueId || (marqueObj ? marqueObj.id : null),
+          etat: prodObj.etat || p.etat || "neuf"
+        });
         produits[p.nom] = prodObj;
       }
     }

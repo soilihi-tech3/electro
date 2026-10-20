@@ -122,6 +122,31 @@ export default function ProductCard({ product, isFavorisPage }) {
           </span>
         ) : null}
 
+        {/* CONDITION BADGE: NEUF OU OCCASION */}
+        {product.etat === "occasion" ? (
+          <span style={{
+            position: "absolute", top: 12, left: hasPromo || product.isNouveau ? 86 : 12,
+            background: "#D97706", color: "#fff",
+            padding: "4px 10px", borderRadius: 16,
+            fontWeight: 800, fontSize: 11, zIndex: 10,
+            boxShadow: "0 2px 6px rgba(217, 119, 6, 0.35)",
+            letterSpacing: "0.4px"
+          }}>
+            Occasion
+          </span>
+        ) : (
+          <span style={{
+            position: "absolute", top: 12, left: hasPromo || product.isNouveau ? 86 : 12,
+            background: "#0D9488", color: "#fff",
+            padding: "4px 10px", borderRadius: 16,
+            fontWeight: 800, fontSize: 11, zIndex: 10,
+            boxShadow: "0 2px 6px rgba(13, 148, 136, 0.3)",
+            letterSpacing: "0.4px"
+          }}>
+            Neuf
+          </span>
+        )}
+
         {/* OUT OF STOCK OR MAX IN CART BADGES */}
         {isOutOfStock ? (
           <span style={{
@@ -148,7 +173,18 @@ export default function ProductCard({ product, isFavorisPage }) {
       </div>
 
       <div className="bs-card-body">
-        <div className="cat-name">{product.Category?.nom || "Produit"}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 4 }}>
+          <span className="cat-name" style={{ margin: 0 }}>{product.Category?.nom || "Électrique"}</span>
+          {(product.marque?.nom || product.Marque?.nom) && (
+            <span style={{ 
+              fontSize: 11, fontWeight: 700, color: "var(--forest-dark)", 
+              background: "var(--forest-light)", padding: "2px 8px", borderRadius: 10,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "50%"
+            }}>
+              {product.marque?.nom || product.Marque?.nom}
+            </span>
+          )}
+        </div>
         <div className="nom">{product.nom}</div>
 
         <div className="bs-price-row">

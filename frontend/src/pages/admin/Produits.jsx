@@ -17,6 +17,7 @@ export default function AdminProduits() {
   const [familles, setFamilles] = useState([]);
   const [unites, setUnites] = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
+  const [marques, setMarques] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
 
@@ -25,6 +26,8 @@ export default function AdminProduits() {
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
   const [filterStock, setFilterStock] = useState(false);
+  const [filterEtat, setFilterEtat] = useState("");
+  const [filterMarque, setFilterMarque] = useState("");
 
   // Modal d'approvisionnement
   const [restockProduct, setRestockProduct] = useState(null);
@@ -39,7 +42,9 @@ export default function AdminProduits() {
   const initialForm = {
     nom: "",
     categoryId: "",
-    famille: "Alimentation",
+    famille: "Électronique",
+    marqueId: "",
+    etat: "neuf",
     description: "",
     prix: "",
     prixPromo: "",
@@ -47,7 +52,7 @@ export default function AdminProduits() {
     isNouveau: false,
     noteEtoiles: "5",
     poids: "1",
-    unite: "Kg",
+    unite: "Pièce",
     coutAchat: "",
     stock: "",
     seuilAlerte: 5,
@@ -62,6 +67,7 @@ export default function AdminProduits() {
     api.get("/admin/familles").then((res) => setFamilles(res.data || [])).catch(() => {});
     api.get("/admin/unites").then((res) => setUnites(res.data || [])).catch(() => {});
     api.get("/admin/fournisseurs").then((res) => setFournisseurs(res.data || [])).catch(() => {});
+    api.get("/admin/marques").then((res) => setMarques(res.data || [])).catch(() => {});
   }
 
   function load() {
@@ -71,6 +77,7 @@ export default function AdminProduits() {
     api.get("/admin/familles").then((res) => setFamilles(res.data || [])).catch(() => {});
     api.get("/admin/unites").then((res) => setUnites(res.data || [])).catch(() => {});
     api.get("/admin/fournisseurs").then((res) => setFournisseurs(res.data || [])).catch(() => {});
+    api.get("/admin/marques").then((res) => setMarques(res.data || [])).catch(() => {});
   }
 
   useEffect(() => {
@@ -98,7 +105,9 @@ export default function AdminProduits() {
     setForm({
       nom: product.nom || "",
       categoryId: product.categoryId || "",
-      famille: product.famille || "Alimentation",
+      famille: product.famille || "Électronique",
+      marqueId: product.marqueId || "",
+      etat: product.etat || "neuf",
       description: product.description || "",
       prix: product.prix ?? "",
       prixPromo: product.prixPromo ?? "",
@@ -106,7 +115,7 @@ export default function AdminProduits() {
       isNouveau: Boolean(product.isNouveau),
       noteEtoiles: product.noteEtoiles !== undefined && product.noteEtoiles !== null ? String(product.noteEtoiles) : "5",
       poids: product.poids || "1",
-      unite: product.unite || "Kg",
+      unite: product.unite || "Pièce",
       coutAchat: product.coutAchat ?? "",
       stock: product.stock ?? "",
       seuilAlerte: product.seuilAlerte ?? 5,
@@ -138,6 +147,8 @@ export default function AdminProduits() {
       stock: form.stock !== "" ? Number(form.stock) : 0,
       seuilAlerte: form.seuilAlerte !== "" ? Number(form.seuilAlerte) : 5,
       categoryId: Number(form.categoryId),
+      marqueId: form.marqueId ? Number(form.marqueId) : null,
+      etat: form.etat || "neuf",
       poids: form.poids || "1",
       famille: form.famille || "Électronique"
     };
@@ -230,17 +241,23 @@ export default function AdminProduits() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Filter products by search query, category, low stock
+  // Filter products by search query, category, low stock, etat, marque
   const filteredProducts = products.filter((p) => {
-    const matchSearch = !search || p.nom?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || (
+      p.nom?.toLowerCase().includes(search.toLowerCase()) ||
+      p.Category?.nom?.toLowerCase().includes(search.toLowerCase()) ||
+      p.marque?.nom?.toLowerCase().includes(search.toLowerCase())
+    );
     const matchCat = !filterCat || String(p.categoryId) === String(filterCat);
     const matchStock = !filterStock || p.stock <= p.seuilAlerte;
+    const matchEtat = !filterEtat || p.etat === filterEtat;
+    const matchMarque = !filterMarque || String(p.marqueId) === String(filterMarque);
 
-    return matchSearch && matchCat && matchStock;
+    return matchSearch && matchCat && matchStock && matchEtat && matchMarque;
   });
 
   // Reset page to 1 when filters change
-  useEffect(() => { setCurrentPage(1); }, [search, filterCat, filterStock]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterCat, filterStock, filterEtat, filterMarque]);
 
   const totalItems = filteredProducts.length;
   const paginatedProducts = filteredProducts.slice(
@@ -321,13 +338,13 @@ export default function AdminProduits() {
               <input 
                 className="bs-input" 
                 style={{ flex: 1, minWidth: 200 }} 
-                placeholder="🔍 Rechercher un produit..." 
+                placeholder="🔍 Rechercher un produit, catégorie ou marque..." 
                 value={search} 
                 onChange={(e) => setSearch(e.target.value)} 
               />
               <select 
                 className="bs-select" 
-                style={{ width: 180 }} 
+                style={{ width: 170 }} 
                 value={filterCat} 
                 onChange={(e) => setFilterCat(e.target.value)}
               >
@@ -335,7 +352,26 @@ export default function AdminProduits() {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
               </select>
 
+              <select 
+                className="bs-select" 
+                style={{ width: 150 }} 
+                value={filterEtat} 
+                onChange={(e) => setFilterEtat(e.target.value)}
+              >
+                <option value="">Tous les états</option>
+                <option value="neuf">✨ Neuf</option>
+                <option value="occasion">♻️ Occasion</option>
+              </select>
 
+              <select 
+                className="bs-select" 
+                style={{ width: 170 }} 
+                value={filterMarque} 
+                onChange={(e) => setFilterMarque(e.target.value)}
+              >
+                <option value="">Toutes les marques</option>
+                {marques.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
+              </select>
 
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, cursor: "pointer", background: filterStock ? "#FAD2CD" : "var(--forest-light)", padding: "0 12px", borderRadius: 8, color: filterStock ? "#B4483A" : "var(--forest-dark)", fontWeight: 700, height: 40 }}>
                 <input type="checkbox" checked={filterStock} onChange={(e) => setFilterStock(e.target.checked)} style={{ margin: 0 }} />
@@ -348,7 +384,8 @@ export default function AdminProduits() {
             <thead>
               <tr>
                 <th>Photo</th>
-                <th>Nom du produit</th>
+                <th>Nom & Marque</th>
+                <th>État</th>
                 <th>Catégorie / Fournisseur</th>
                 <th>Prix de vente</th>
                 <th>Coût d'achat</th>
@@ -358,17 +395,18 @@ export default function AdminProduits() {
             </thead>
             <tbody>
               {loading && (
-                <SkeletonTableRows rows={6} cols={7} />
+                <SkeletonTableRows rows={6} cols={8} />
               )}
               {!loading && paginatedProducts.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
+                  <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
                     Aucun produit ne correspond à votre recherche.
                   </td>
                 </tr>
               )}
               {!loading && paginatedProducts.map((p) => {
                 const supplierName = p.fournisseur ? (p.fournisseur.nom || p.fournisseur.nomCompany || p.fournisseur.nomContact) : null;
+                const marqueNom = p.marque?.nom || p.Marque?.nom;
                 return (
                   <tr key={p.id}>
                     <td style={{ width: 60 }}>
@@ -380,10 +418,34 @@ export default function AdminProduits() {
                     </td>
                     <td style={{ fontWeight: 700, color: "var(--ink)" }}>
                       <div>{p.nom}</div>
+                      {marqueNom && (
+                        <div style={{ fontSize: 11.5, color: "var(--forest)", fontWeight: 700, marginTop: 2 }}>
+                          Marque : {marqueNom}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11.5, color: "#F59E0B", marginTop: 2, display: "flex", alignItems: "center", gap: 3 }}>
                         ⭐ <strong>{(p.avis?.length ? (p.avis.reduce((s, a) => s + a.note, 0) / p.avis.length) : (p.noteEtoiles !== undefined && p.noteEtoiles !== null ? Number(p.noteEtoiles) : 5.0)).toFixed(1)}</strong>
                         <span style={{ color: "var(--muted)", fontWeight: 400 }}>({p.avis?.length || 0} avis)</span>
                       </div>
+                    </td>
+                    <td>
+                      {p.etat === "occasion" ? (
+                        <span style={{ 
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          background: "#FFFBEB", color: "#B45309", border: "1.5px solid #FDE68A",
+                          padding: "3px 9px", borderRadius: 12, fontSize: 11.5, fontWeight: 800 
+                        }}>
+                          ♻️ Occasion
+                        </span>
+                      ) : (
+                        <span style={{ 
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                          background: "#F0FDFA", color: "#0F766E", border: "1.5px solid #99F6E4",
+                          padding: "3px 9px", borderRadius: 12, fontSize: 11.5, fontWeight: 800 
+                        }}>
+                          ✨ Neuf
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span style={{ background: "var(--forest-light)", color: "var(--forest-dark)", padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700, border: "1px solid var(--line)" }}>
@@ -453,10 +515,76 @@ export default function AdminProduits() {
               <input
                 className="bs-input"
                 required
-                placeholder="ex: Mangues Kent de Thiès"
+                placeholder="ex: Disjoncteur Différentiel 32A, Climatiseur Inverter..."
                 value={form.nom}
                 onChange={(e) => set("nom", e.target.value)}
               />
+            </div>
+
+            <div className="bs-form-row-2" style={{ marginBottom: 4 }}>
+              {/* ÉTAT DU PRODUIT (NEUF / OCCASION) */}
+              <div className="bs-input-group">
+                <label style={{ fontWeight: 700 }}>État du produit *</label>
+                <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                  <label style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                    border: form.etat === "neuf" ? "2px solid #0D9488" : "1.5px solid var(--line)",
+                    background: form.etat === "neuf" ? "#F0FDFA" : "var(--card)",
+                    color: form.etat === "neuf" ? "#0F766E" : "var(--ink)",
+                    fontWeight: 800, fontSize: 13.5, transition: "all 0.2s"
+                  }}>
+                    <input 
+                      type="radio" 
+                      name="etat" 
+                      value="neuf" 
+                      checked={form.etat === "neuf"} 
+                      onChange={() => set("etat", "neuf")} 
+                      style={{ display: "none" }}
+                    />
+                    ✨ Neuf (Jamais servi)
+                  </label>
+                  <label style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                    border: form.etat === "occasion" ? "2px solid #D97706" : "1.5px solid var(--line)",
+                    background: form.etat === "occasion" ? "#FFFBEB" : "var(--card)",
+                    color: form.etat === "occasion" ? "#B45309" : "var(--ink)",
+                    fontWeight: 800, fontSize: 13.5, transition: "all 0.2s"
+                  }}>
+                    <input 
+                      type="radio" 
+                      name="etat" 
+                      value="occasion" 
+                      checked={form.etat === "occasion"} 
+                      onChange={() => set("etat", "occasion")} 
+                      style={{ display: "none" }}
+                    />
+                    ♻️ Occasion (2nde main)
+                  </label>
+                </div>
+              </div>
+
+              {/* MARQUE DU PRODUIT */}
+              <div className="bs-input-group">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <label style={{ fontWeight: 700 }}>Marque du produit</label>
+                  <a href="/admin/marques" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "var(--forest)", fontWeight: 700, textDecoration: "none" }}>
+                    + Gérer les marques
+                  </a>
+                </div>
+                <select
+                  className="bs-select"
+                  value={form.marqueId}
+                  onChange={(e) => set("marqueId", e.target.value)}
+                  style={{ height: 42 }}
+                >
+                  <option value="">-- Sans marque spécifique / Générique --</option>
+                  {marques.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nom}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="bs-form-row-4">

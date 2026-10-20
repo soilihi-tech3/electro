@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const { Op } = require("sequelize");
-const { sequelize, Product, Category, Order, OrderItem, User, Boutique, Notification, Review, Famille, Fournisseur, UniteVente, Achat } = require("../models");
+const { sequelize, Product, Category, Order, OrderItem, User, Boutique, Notification, Review, Famille, Fournisseur, UniteVente, Achat, Marque } = require("../models");
 const { authenticate, requireRole, requireOwnBoutique } = require("../middleware/auth");
 const { clearCachePattern } = require("../config/cache");
 const { broadcast } = require("../utils/broadcaster");
@@ -309,7 +309,7 @@ router.get("/products", async (req, res, next) => {
   try {
     res.json(await Product.findAll({ 
       where: { boutiqueId: req.boutiqueId }, 
-      include: [Category, { model: Fournisseur, as: "fournisseur" }], 
+      include: [Category, { model: Fournisseur, as: "fournisseur" }, { model: Marque, as: "marque" }], 
       order: [["createdAt", "DESC"]] 
     }));
   } catch (err) { next(err); }
@@ -335,7 +335,7 @@ router.post("/products", async (req, res, next) => {
     }
 
     const fullProduct = await Product.findByPk(product.id, {
-      include: [Category, { model: Fournisseur, as: "fournisseur" }]
+      include: [Category, { model: Fournisseur, as: "fournisseur" }, { model: Marque, as: "marque" }]
     });
 
     purgeCache();
@@ -352,7 +352,7 @@ router.put("/products/:id", async (req, res, next) => {
     await product.update(req.body);
 
     const fullProduct = await Product.findByPk(product.id, {
-      include: [Category, { model: Fournisseur, as: "fournisseur" }]
+      include: [Category, { model: Fournisseur, as: "fournisseur" }, { model: Marque, as: "marque" }]
     });
 
     purgeCache();
@@ -1033,6 +1033,58 @@ router.post("/achats", requireRole("admin", "employe"), async (req, res, next) =
     });
 
     res.status(201).json(fullAchat);
+  } catch (err) { next(err); }
+});
+
+/* ---------------------- GESTION DES MARQUES ---------------------- */
+
+router.get("/marques", async (req, res, next) => {
+  try {
+    const list = await Marque.findAll({
+      where: { boutiqueId: req.boutiqueId },
+      include: [{ model: Product, as: "produits", attributes: ["id"] }],
+      order: [["nom", "ASC"]]
+    });
+    res.json(list);
+  } catch (err) { next(err); }
+});
+
+router.post("/marques", requireRole("admin", "employe"), async (req, res, next) => {
+  try {
+    const { nom, logoUrl, description } = req.body;
+    if (!nom || !nom.trim()) return res.status(400).json({ message: "Le nom de la marque est requis." });
+    const marque = await Marque.create({
+      nom: nom.trim(),
+      logoUrl: logoUrl || null,
+      description: description || null,
+      boutiqueId: req.boutiqueId
+    });
+    purgeCache();
+    broadcast("boutique_updated", { boutiqueId: req.boutiqueId });
+    res.status(201).json(marque);
+  } catch (err) { next(err); }
+});
+
+router.put("/marques/:id", requireRole("admin", "employe"), async (req, res, next) => {
+  try {
+    const marque = await Marque.findOne({ where: { id: req.params.id, boutiqueId: req.boutiqueId } });
+    if (!marque) return res.status(404).json({ message: "Marque introuvable." });
+    await marque.update(req.body);
+    purgeCache();
+    broadcast("boutique_updated", { boutiqueId: req.boutiqueId });
+    res.json(marque);
+  } catch (err) { next(err); }
+});
+
+router.delete("/marques/:id", requireRole("admin"), async (req, res, next) => {
+  try {
+    const marque = await Marque.findOne({ where: { id: req.params.id, boutiqueId: req.boutiqueId } });
+    if (!marque) return res.status(404).json({ message: "Marque introuvable." });
+    await Product.update({ marqueId: null }, { where: { marqueId: marque.id, boutiqueId: req.boutiqueId } });
+    await marque.destroy();
+    purgeCache();
+    broadcast("boutique_updated", { boutiqueId: req.boutiqueId });
+    res.json({ message: "Marque supprimée avec succès." });
   } catch (err) { next(err); }
 });
 

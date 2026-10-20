@@ -22,6 +22,8 @@ const Product = sequelize.define("Product", {
   ventesCount: { type: DataTypes.INTEGER, defaultValue: 0 },
   isNouveau: { type: DataTypes.BOOLEAN, defaultValue: false },
   noteEtoiles: { type: DataTypes.DECIMAL(2, 1), defaultValue: 5.0 },
+  etat: { type: DataTypes.STRING(20), defaultValue: "neuf" }, // 'neuf' | 'occasion'
+  marqueId: { type: DataTypes.INTEGER, allowNull: true },
 }, { tableName: "products" });
 
 module.exports = Product;

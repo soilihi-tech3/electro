@@ -1,6 +1,6 @@
 const express = require("express");
 const { Op } = require("sequelize");
-const { sequelize, Product, Category, Order, OrderItem, Review, User, Notification, Famille, RechargePlan } = require("../models");
+const { sequelize, Product, Category, Order, OrderItem, Review, User, Notification, Famille, RechargePlan, Marque } = require("../models");
 const { authenticate, requireRole, loadBoutique } = require("../middleware/auth");
 const { cacheMiddleware, clearCachePattern } = require("../config/cache");
 const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../services/email.service");
@@ -146,11 +146,24 @@ router.get("/:slug/categories", loadBoutique, cacheMiddleware(600), async (req, 
   } catch (err) { next(err); }
 });
 
-// GET /api/store/:slug/products?categoryId=&famille=&search=&promo=true (cached 2 min)
+// GET /api/store/:slug/marques (cached 5 min)
+router.get("/:slug/marques", loadBoutique, cacheMiddleware(300), async (req, res, next) => {
+  try {
+    const marques = await Marque.findAll({ 
+      where: { boutiqueId: req.boutique.id },
+      order: [["nom", "ASC"]]
+    });
+    res.json(marques);
+  } catch (err) { next(err); }
+});
+
+// GET /api/store/:slug/products?categoryId=&famille=&search=&promo=true&etat=&marqueId= (cached 2 min)
 router.get("/:slug/products", loadBoutique, cacheMiddleware(120), async (req, res, next) => {
   try {
     const where = { boutiqueId: req.boutique.id };
     if (req.query.categoryId) where.categoryId = req.query.categoryId;
+    if (req.query.etat) where.etat = req.query.etat; // 'neuf' | 'occasion'
+    if (req.query.marqueId) where.marqueId = req.query.marqueId;
 
     const stripAccents = (str) => (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
@@ -185,7 +198,9 @@ router.get("/:slug/products", loadBoutique, cacheMiddleware(120), async (req, re
         { '$Category.nom$': { [Op.like]: `%${qRaw}%` } },
         { '$Category.nom$': { [Op.like]: `%${qClean}%` } },
         { '$Category.famille$': { [Op.like]: `%${qRaw}%` } },
-        { '$Category.famille$': { [Op.like]: `%${qClean}%` } }
+        { '$Category.famille$': { [Op.like]: `%${qClean}%` } },
+        { '$marque.nom$': { [Op.like]: `%${qRaw}%` } },
+        { '$marque.nom$': { [Op.like]: `%${qClean}%` } }
       ];
       if (where[Op.or]) {
         where[Op.and] = [{ [Op.or]: searchConditions }];
@@ -198,7 +213,11 @@ router.get("/:slug/products", loadBoutique, cacheMiddleware(120), async (req, re
 
     const products = await Product.findAll({
       where,
-      include: [{ model: Category }, { model: Review, as: "avis", where: { statut: "publie" }, required: false }],
+      include: [
+        { model: Category }, 
+        { model: Marque, as: "marque", attributes: ["id", "nom", "logoUrl"], required: false },
+        { model: Review, as: "avis", where: { statut: "publie" }, required: false }
+      ],
       order: [["createdAt", "DESC"]],
     });
     res.json(products);
@@ -212,6 +231,7 @@ router.get("/:slug/products/:id", loadBoutique, cacheMiddleware(120), async (req
       where: { id: req.params.id, boutiqueId: req.boutique.id },
       include: [
         { model: Category },
+        { model: Marque, as: "marque", attributes: ["id", "nom", "logoUrl", "description"], required: false },
         { model: Review, as: "avis", where: { statut: "publie" }, required: false, include: [{ model: User, as: "auteur", attributes: ["nom"] }] },
       ],
     });
