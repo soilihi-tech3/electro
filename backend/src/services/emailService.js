@@ -55,7 +55,7 @@ async function trackDailyQuota() {
 }
 
 /**
- * Fonction cœur d'envoi d'e-mail via l'API REST Brevo
+ * Fonction cœur d'envoi d'e-mail via l'API REST Brevo (HTTPS port 443)
  */
 async function sendEmailCore({ to, subject, html, type = "general" }) {
   if (!to) {
@@ -63,7 +63,8 @@ async function sendEmailCore({ to, subject, html, type = "general" }) {
     return false;
   }
 
-  const senderEmail = (process.env.BREVO_SENDER_EMAIL || process.env.GMAIL_USER || "soilihiabdou99@gmail.com").trim();
+  const apiKey = (process.env.BREVO_API_KEY || process.env.SENDINBLUE_API_KEY || "").trim();
+  const senderEmail = (process.env.BREVO_SENDER_EMAIL || "soilihiabdou99@gmail.com").trim();
   const senderName = (process.env.BREVO_SENDER_NAME || "EasyMarket").trim();
 
   // Version texte brut pour maximiser la délivrabilité
@@ -73,34 +74,51 @@ async function sendEmailCore({ to, subject, html, type = "general" }) {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // 1. Envoi via l'API REST officielle Brevo
-  const client = getBrevoClient();
-  if (client) {
+  // 1. Envoi prioritaire via l'API REST Brevo (HTTPS 443 - Garanti sans blocage Render)
+  if (apiKey) {
     try {
-      const response = await client.transactionalEmails.sendTransacEmail({
-        sender: { name: senderName, email: senderEmail },
-        replyTo: { name: senderName, email: senderEmail },
-        to: [{ email: to }],
-        subject,
-        htmlContent: html,
-        textContent: textContent
+      // Appel direct HTTPS REST API v3 Brevo
+      const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": apiKey,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          replyTo: { name: senderName, email: senderEmail },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: textContent
+        }),
+        signal: AbortSignal.timeout(12000) // Timeout de 12 secondes max pour ne jamais bloquer Render
       });
 
-      console.log(`✉️ [BREVO REST API SUCCESS] E-mail "${type}" envoyé à ${to} (MessageId: ${response?.messageId || 'OK'})`);
-      await trackDailyQuota();
-      await logEmailSent(to, type, "succes");
-      return true;
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        console.log(`✉️ [BREVO REST API 100% HTTPS] E-mail "${type}" envoyé avec succès à ${to} (MessageId: ${data.messageId || 'OK'})`);
+        await trackDailyQuota();
+        await logEmailSent(to, type, "succes");
+        return true;
+      } else {
+        const errorDetail = data?.message || data?.error || JSON.stringify(data);
+        console.error(`❌ [BREVO REST API ERROR] Statut HTTP ${res.status} pour ${to}:`, errorDetail);
+        await logEmailSent(to, type, "echec", `HTTP ${res.status}: ${errorDetail}`);
+      }
     } catch (err) {
-      const errMsg = err?.body?.message || err?.message || JSON.stringify(err);
-      console.error(`❌ [BREVO REST API ERROR] Échec d'envoi à ${to} :`, errMsg);
-      await logEmailSent(to, type, "echec", errMsg);
+      console.error(`❌ [BREVO REST API EXCEPTION] Erreur requête HTTPS à ${to}:`, err.message);
+      await logEmailSent(to, type, "echec", err.message);
     }
   } else {
-    console.warn("⚠️ [EMAIL SERVICE] BREVO_API_KEY non configurée.");
+    console.warn("⚠️ [EMAIL SERVICE] BREVO_API_KEY absente des variables d'environnement.");
   }
 
-  // 2. Fallback SMTP (Gmail) si Brevo échoue ou n'est pas configuré
-  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASS) {
+  // 2. Fallback SMTP (UNIQUEMENT EN DÉVELOPPEMENT LOCAL, JAMAIS SUR RENDER)
+  const isProduction = process.env.NODE_ENV === "production" || process.env.RENDER;
+  if (!isProduction && process.env.GMAIL_USER && process.env.GMAIL_APP_PASS) {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -111,14 +129,14 @@ async function sendEmailCore({ to, subject, html, type = "general" }) {
       });
       
       const info = await transporter.sendMail({
-        from: process.env.GMAIL_USER.trim(), // Utiliser l'email exact pour éviter les alertes de spoofing
+        from: process.env.GMAIL_USER.trim(),
         to,
         subject,
         html,
         text: textContent
       });
       
-      console.log(`✉️ [GMAIL SMTP SUCCESS] E-mail "${type}" envoyé à ${to} (MessageId: ${info.messageId})`);
+      console.log(`✉️ [GMAIL SMTP LOCAL SUCCESS] E-mail "${type}" envoyé à ${to} (MessageId: ${info.messageId})`);
       await logEmailSent(to, type, "succes");
       return true;
     } catch (err) {
