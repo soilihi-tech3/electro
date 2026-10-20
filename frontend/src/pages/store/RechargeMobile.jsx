@@ -1,11 +1,30 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
-import { Zap, CheckCircle2, CreditCard, Lock, AlertCircle, Info, ArrowRight, UserCheck } from "lucide-react";
+import { Zap, CheckCircle2, CreditCard, Lock, AlertCircle, Info, ArrowRight, UserCheck, Smartphone } from "lucide-react";
 import api, { SLUG } from "../../api";
 import { useCart } from "../../context/CartContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { MessageCircle } from "lucide-react";
 import { WeroLogo, OnlinePaymentBadges } from "../../components/PaymentLogos";
+
+// Logos Wave et Orange Money inline (SVG/images)
+const WaveLogo = () => (
+  <img
+    src="https://paytech.sn/assets/srcs/img/wave-logo.png"
+    alt="Wave"
+    style={{ height: 28, objectFit: "contain" }}
+    onError={(e) => { e.target.style.display = "none"; }}
+  />
+);
+
+const OrangeMoneyLogo = () => (
+  <img
+    src="https://paytech.sn/assets/srcs/img/orange-money-logo.png"
+    alt="Orange Money"
+    style={{ height: 28, objectFit: "contain" }}
+    onError={(e) => { e.target.style.display = "none"; }}
+  />
+);
 
 const OPERATORS = [
   {
@@ -61,13 +80,17 @@ export default function RechargeMobile() {
   const [operator, setOperator] = useState(OPERATORS[0]); // Comores Telecom par défaut
   const [phone, setPhone] = useState("");
 
-  const defaultModes = { holam: true, carte: true };
+  const defaultModes = { holam: true, carte: true, wave: true, orange: true };
   const modesPaiement = { ...defaultModes, ...(boutique?.modesPaiement || {}) };
   const weroAvailable = !!modesPaiement.holam;
   const carteAvailable = !!modesPaiement.carte;
+  const waveAvailable = !!modesPaiement.wave;
+  const orangeAvailable = !!modesPaiement.orange;
 
-  const [moyenPaiement, setMoyenPaiement] = useState(carteAvailable ? "carte" : "wero");
-  
+  // Sélection du moyen de paiement par défaut : wave > carte > wero
+  const defaultPayment = waveAvailable ? "wave" : carteAvailable ? "carte" : "wero";
+  const [moyenPaiement, setMoyenPaiement] = useState(defaultPayment);
+
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentModalData, setPaymentModalData] = useState(null);
 
@@ -235,7 +258,11 @@ export default function RechargeMobile() {
             <span style={{ width: 44, height: 44, border: "4px solid rgba(255,255,255,0.2)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
             <div>
               <h3 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800 }}>Connexion sécurisée</h3>
-              <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.8)" }}>Redirection vers la caisse Stripe...</p>
+              <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.8)" }}>
+                {moyenPaiement === "wave" ? "Redirection vers Wave..." :
+                 moyenPaiement === "orange" ? "Redirection vers Orange Money..." :
+                 "Redirection vers la caisse..."}
+              </p>
             </div>
           </div>
         </div>
@@ -484,9 +511,80 @@ export default function RechargeMobile() {
             <label style={{ display: "block", fontSize: 14, fontWeight: 800, color: "var(--forest-dark)", marginBottom: 12 }}>
               4. Choisissez votre moyen de paiement :
             </label>
+
+            {/* Alerte informative PayTech */}
+            <div style={{
+              background: "#F0FFF4", border: "1px solid #BBF7D0", borderRadius: 10,
+              padding: "10px 14px", marginBottom: 12, fontSize: 12.5, color: "#166534",
+              display: "flex", alignItems: "flex-start", gap: 8
+            }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
+              <span>
+                <strong>Paiement sécurisé via PayTech</strong> — Wave et Orange Money sont traités par PayTech, une passerelle de paiement certifiée pour l'Afrique de l'Ouest.
+              </span>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+
+              {/* WAVE — PayTech */}
+              {waveAvailable && (
+                <div
+                  onClick={() => setMoyenPaiement("wave")}
+                  style={{
+                    background: moyenPaiement === "wave" ? "#EBF8FF" : "var(--paper)",
+                    border: `1.5px solid ${moyenPaiement === "wave" ? "#0EA5E9" : "var(--line)"}`,
+                    borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s ease"
+                  }}
+                >
+                  <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${moyenPaiement === "wave" ? "#0EA5E9" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {moyenPaiement === "wave" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#0EA5E9" }} />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8 }}>
+                          <Smartphone size={16} color="#0EA5E9" /> Wave
+                          <span style={{ fontSize: 10, background: "#0EA5E9", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>PAYTECH</span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile instantané — Sénégal & Comores</div>
+                      </div>
+                      <WaveLogo />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ORANGE MONEY — PayTech */}
+              {orangeAvailable && (
+                <div
+                  onClick={() => setMoyenPaiement("orange")}
+                  style={{
+                    background: moyenPaiement === "orange" ? "#FFF7ED" : "var(--paper)",
+                    border: `1.5px solid ${moyenPaiement === "orange" ? "#F97316" : "var(--line)"}`,
+                    borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s ease"
+                  }}
+                >
+                  <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${moyenPaiement === "orange" ? "#F97316" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {moyenPaiement === "orange" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#F97316" }} />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8 }}>
+                          <Smartphone size={16} color="#F97316" /> Orange Money
+                          <span style={{ fontSize: 10, background: "#F97316", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>PAYTECH</span>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile Orange — Sénégal & Afrique de l'Ouest</div>
+                      </div>
+                      <OrangeMoneyLogo />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CARTE BANCAIRE — Stripe */}
               {carteAvailable && (
-                <div 
+                <div
                   onClick={() => setMoyenPaiement("carte")}
                   style={{
                     background: moyenPaiement === "carte" ? "#F0FDF4" : "var(--paper)",
@@ -500,8 +598,8 @@ export default function RechargeMobile() {
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                       <div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)" }}>Carte bancaire</div>
-                        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Paiement sécurisé en ligne (Stripe)</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)" }}>Carte bancaire (€)</div>
+                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement sécurisé en ligne (Stripe) — en Euros</div>
                       </div>
                       <OnlinePaymentBadges />
                     </div>
@@ -509,8 +607,9 @@ export default function RechargeMobile() {
                 </div>
               )}
 
+              {/* WERO */}
               {weroAvailable && (
-                <div 
+                <div
                   onClick={() => setMoyenPaiement("wero")}
                   style={{
                     background: moyenPaiement === "wero" ? "#F0FDF4" : "var(--paper)",
@@ -525,7 +624,7 @@ export default function RechargeMobile() {
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)" }}>Wero</div>
-                        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>Paiement instantané européen</div>
+                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement instantané européen</div>
                       </div>
                       <WeroLogo height={28} />
                     </div>
@@ -549,11 +648,21 @@ export default function RechargeMobile() {
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              boxShadow: "0 6px 20px rgba(22, 52, 36, 0.2)"
+              boxShadow: "0 6px 20px rgba(22, 52, 36, 0.2)",
+              background: moyenPaiement === "wave" ? "linear-gradient(135deg, #0369A1, #0EA5E9)" :
+                          moyenPaiement === "orange" ? "linear-gradient(135deg, #EA580C, #F97316)" :
+                          undefined
             }}
           >
-            <CreditCard size={20} />
-            <span>Acheter maintenant {moyenPaiement === "wero" ? "par Wero" : "par Carte"} ({currentTotalEur.toFixed(2)} €)</span>
+            {moyenPaiement === "wave" ? <Smartphone size={20} /> :
+             moyenPaiement === "orange" ? <Smartphone size={20} /> :
+             <CreditCard size={20} />}
+            <span>
+              {moyenPaiement === "wave" ? `Payer par Wave (${Math.round(currentTotalEur * 655).toLocaleString("fr-FR")} XOF)` :
+               moyenPaiement === "orange" ? `Payer par Orange Money (${Math.round(currentTotalEur * 655).toLocaleString("fr-FR")} XOF)` :
+               moyenPaiement === "wero" ? `Acheter par Wero (${currentTotalEur.toFixed(2)} €)` :
+               `Acheter par Carte (${currentTotalEur.toFixed(2)} €)`}
+            </span>
             <ArrowRight size={18} />
           </button>
         </form>

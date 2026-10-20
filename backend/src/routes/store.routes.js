@@ -6,6 +6,43 @@ const { cacheMiddleware, clearCachePattern } = require("../config/cache");
 const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../services/email.service");
 const { broadcast, addClient, removeClient } = require("../utils/broadcaster");
 
+/**
+ * Crée un lien de paiement PayTech (Wave, Orange Money, etc.)
+ * Selon la doc officielle : https://doc.intech.sn/doc_paytech.php
+ * POST https://paytech.sn/api/payment/request-payment
+ * Headers: API_KEY, API_SECRET
+ * Body: item_name, item_price, currency, ref_command, command_name, env,
+ *       ipn_url, success_url, cancel_url, custom_field, target_payment (optionnel)
+ * Response: { success: 1, token, redirect_url, redirectUrl }
+ */
+async function createPaytechPaymentLink({ apiKey, apiSecret, payload }) {
+  const response = await fetch("https://paytech.sn/api/payment/request-payment", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "API_KEY": apiKey,
+      "API_SECRET": apiSecret
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const data = await response.json();
+  // La doc PayTech précise : vérifier que success === 1 (strictement)
+  if (data.success === 1 || data.success === true) {
+    return { success: true, url: data.redirect_url || data.redirectUrl, token: data.token };
+  }
+  return { success: false, error: JSON.stringify(data) };
+}
+
+function getPaytechKeys(boutique) {
+  // Priorité aux clés de la boutique, fallback sur les variables d'env globales
+  return {
+    apiKey:    boutique?.paytechApiKey    || process.env.PAYTECH_API_KEY,
+    apiSecret: boutique?.paytechApiSecret || process.env.PAYTECH_API_SECRET,
+    env:       process.env.PAYTECH_ENV    || "test"  // "test" ou "prod"
+  };
+}
+
 const router = express.Router({ mergeParams: true });
 
 function getStripeSecretKey(boutique) {
@@ -264,8 +301,11 @@ router.post("/:slug/orders", loadBoutique, authenticate, requireRole("client"), 
 
     const fraisLivraison = modeLivraison === "domicile" ? Number(req.boutique.fraisLivraison) : 0;
     
-    // Si paiement par carte Stripe, on met en attente de paiement (attente de redirection). Pour Wero, Cash et Mvola, la commande est en_attente directe.
-    const statutInit = (moyenPaiement === "carte") ? "en_attente_paiement" : "en_attente";
+    // Si paiement en ligne (carte Stripe, Wave/Orange PayTech), mettre en attente de paiement
+    // pour que create-checkout-session puisse retrouver la commande via statut: "en_attente_paiement"
+    const statutInit = (moyenPaiement === "carte" || moyenPaiement === "wave" || moyenPaiement === "orange" || moyenPaiement === "paytech")
+      ? "en_attente_paiement"
+      : "en_attente";
 
     if (moyenPaiement === "carte") {
       const stripeSecretKey = getStripeSecretKey(req.boutique);
@@ -496,10 +536,11 @@ router.patch("/:slug/orders/:id/switch-to-cash", loadBoutique, authenticate, asy
   }
 });
 
-// POST /api/store/:slug/create-checkout-session (Redirection Stripe pour Carte & Wero)
+// POST /api/store/:slug/create-checkout-session (Stripe pour Carte/Wero + PayTech pour Wave/Orange Money)
 router.post("/:slug/create-checkout-session", loadBoutique, authenticate, async (req, res, next) => {
   try {
-    const { orderId } = req.body;
+    // moyenPaiement peut être passé depuis le frontend pour forcer le routage PayTech
+    const { orderId, moyenPaiement: moyenPaiementOverride } = req.body;
     if (!orderId) return res.status(400).json({ message: "L'ID de la commande est requis." });
 
     const order = await Order.findOne({
@@ -515,55 +556,71 @@ router.post("/:slug/create-checkout-session", loadBoutique, authenticate, async 
     const userEmail = order.client?.email || req.user?.email || undefined;
     const originUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
 
-    if (order.moyenPaiement === "paydunya" || order.moyenPaiement === "orange" || order.moyenPaiement === "wave") {
-      try {
-        const paydunyaMasterKey = req.boutique.paydunyaMasterKey;
-        const paydunyaPrivateKey = req.boutique.paydunyaPrivateKey;
-        const paydunyaToken = req.boutique.paydunyaToken;
+    // Utiliser le moyenPaiement envoyé depuis le frontend en priorité, sinon celui de la commande
+    const effectiveMoyen = moyenPaiementOverride || order.moyenPaiement;
 
-        if (!paydunyaMasterKey || !paydunyaPrivateKey || !paydunyaToken) {
-          return res.status(400).json({ message: "Les clés PayDunya ne sont pas configurées pour cette boutique." });
+    // Si moyenPaiement a changé (ex: le client a choisi wave au checkout), mettre à jour la commande
+    if (moyenPaiementOverride && moyenPaiementOverride !== order.moyenPaiement) {
+      await order.update({ moyenPaiement: moyenPaiementOverride });
+      order.moyenPaiement = moyenPaiementOverride;
+    }
+
+    // ── PayTech : Wave & Orange Money ────────────────────────────────────────
+    if (effectiveMoyen === "wave" || effectiveMoyen === "orange" || effectiveMoyen === "paytech") {
+      try {
+        const { apiKey, apiSecret, env } = getPaytechKeys(req.boutique);
+
+        if (!apiKey || !apiSecret) {
+          return res.status(400).json({ message: "Les clés PayTech ne sont pas configurées. Veuillez contacter l'administrateur." });
         }
 
-        const invoiceData = {
-          invoice: {
-            total_amount: Math.round(Number(order.total)), // Paydunya works in local currency (XOF/XAF typically, check your account settings, usually XOF)
-            description: `Commande ${order.id} - ${req.boutique.nom}`
-          },
-          store: {
-            name: req.boutique.nom,
-            website_url: originUrl
-          },
-          actions: {
-            cancel_url: `${originUrl}/confirmation/${order.id}?canceled=true`,
-            return_url: `${originUrl}/confirmation/${order.id}?success=true`,
-            callback_url: `${originUrl.replace('5173', '3000')}/api/store/${req.boutique.slug}/paydunya-webhook` // Optional, or point to backend URL
-          }
-        };
+        // ref_command doit être unique — on utilise l'ID de commande préfixé
+        const refCommand = `ORDER-${order.id}-${Date.now()}`;
 
-        const response = await fetch("https://app.paydunya.com/api/v1/checkout-invoice/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "PAYDUNYA-MASTER-KEY": paydunyaMasterKey,
-            "PAYDUNYA-PRIVATE-KEY": paydunyaPrivateKey,
-            "PAYDUNYA-TOKEN": paydunyaToken
-          },
-          body: JSON.stringify(invoiceData)
+        // custom_field : nos métadonnées renvoyées dans l'IPN
+        const customField = JSON.stringify({
+          boutiqueId: req.boutique.id,
+          userId: req.user.id,
+          orderId: order.id,
+          type: order.typeVente || "boutique"
         });
 
-        const data = await response.json();
-        
-        if (data.response_code === "00") {
-          // Update order with the token as session ID
-          await order.update({ stripeSessionId: data.token });
-          return res.json({ url: data.url });
+        const backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 4000}`;
+        // Pour PayTech, utiliser FRONTEND_URL depuis l'env (ne jamais utiliser localhost car PayTech le rejette)
+        const paytechFrontUrl = process.env.FRONTEND_URL || (originUrl.includes("localhost") ? "https://comoresbiachara.site" : originUrl);
+
+        const payload = {
+          item_name: `Commande #${order.id} - ${req.boutique.nom}`,
+          item_price: Math.round(Number(order.total)), // En XOF
+          currency: "XOF",
+          ref_command: refCommand,
+          command_name: `Paiement commande #${order.id} sur ${req.boutique.nom}`,
+          env: env,
+          ipn_url: `${backendUrl}/api/webhooks/paytech`,
+          success_url: `${paytechFrontUrl}/confirmation/${order.id}?success=true`,
+          cancel_url: `${paytechFrontUrl}/confirmation/${order.id}?canceled=true`,
+          custom_field: customField
+        };
+
+        // Cibler un moyen de paiement spécifique si demandé
+        // Valeurs exactes acceptées par PayTech :
+        // Wave, Wave CI, Orange Money, Orange Money CI, Orange Money ML, etc.
+        if (effectiveMoyen === "wave") payload.target_payment = "Wave";
+        if (effectiveMoyen === "orange") payload.target_payment = "Orange Money";
+
+        const result = await createPaytechPaymentLink({ apiKey, apiSecret, payload });
+
+        if (result.success) {
+          // On stocke le ref_command dans stripeSessionId pour retrouver la commande dans l'IPN
+          await order.update({ stripeSessionId: refCommand });
+          return res.json({ url: result.url });
         } else {
-          return res.status(400).json({ message: "Erreur PayDunya: " + (data.response_text || "Inconnue") });
+          console.error("PayTech Error:", result.error);
+          return res.status(400).json({ message: "Erreur PayTech: " + result.error });
         }
       } catch (err) {
-        console.error("PayDunya Error:", err);
-        return res.status(500).json({ message: "Erreur lors de la création de la session PayDunya." });
+        console.error("PayTech Error:", err);
+        return res.status(500).json({ message: "Erreur lors de la création du lien PayTech." });
       }
     }
 
@@ -673,53 +730,62 @@ router.post("/:slug/create-recharge-session", loadBoutique, authenticate, async 
       return res.json({ orderId: order.id, order });
     }
 
-    if (moyenPaiement === "paydunya" || moyenPaiement === "orange" || moyenPaiement === "wave") {
+    // ── PayTech : Wave & Orange Money (Recharge Mobile) ──────────────────────
+    if (moyenPaiement === "wave" || moyenPaiement === "orange" || moyenPaiement === "paytech") {
       try {
-        const paydunyaMasterKey = req.boutique.paydunyaMasterKey;
-        const paydunyaPrivateKey = req.boutique.paydunyaPrivateKey;
-        const paydunyaToken = req.boutique.paydunyaToken;
+        const { apiKey, apiSecret, env } = getPaytechKeys(req.boutique);
 
-        if (!paydunyaMasterKey || !paydunyaPrivateKey || !paydunyaToken) {
-          return res.status(400).json({ message: "Les clés PayDunya ne sont pas configurées pour cette boutique." });
+        if (!apiKey || !apiSecret) {
+          return res.status(400).json({ message: "Les clés PayTech ne sont pas configurées. Veuillez contacter l'administrateur." });
         }
 
-        const invoiceData = {
-          invoice: {
-            total_amount: Math.round(Number(amountEur)), // En devises de compte, ex: XOF ou EUR selon la config
-            description: `Recharge Crédit Mobile ${operatorName} - ${req.boutique.nom}`
-          },
-          store: {
-            name: req.boutique.nom,
-            website_url: originUrl
-          },
-          actions: {
-            cancel_url: `${originUrl}/recharge-mobile?status=canceled`,
-            return_url: `${originUrl}/recharge-mobile?status=success&phone=${encodeURIComponent(cleanPhone.replace(/^269/, ''))}&order_id=${order.id}`,
-            callback_url: `${originUrl.replace('5173', '3000')}/api/store/${req.boutique.slug}/paydunya-webhook`
-          }
-        };
+        const refCommand = `RECHARGE-${order.id}-${Date.now()}`;
 
-        const response = await fetch("https://app.paydunya.com/api/v1/checkout-invoice/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "PAYDUNYA-MASTER-KEY": paydunyaMasterKey,
-            "PAYDUNYA-PRIVATE-KEY": paydunyaPrivateKey,
-            "PAYDUNYA-TOKEN": paydunyaToken
-          },
-          body: JSON.stringify(invoiceData)
+        // custom_field : métadonnées pour l'IPN
+        const customField = JSON.stringify({
+          boutiqueId: req.boutique.id,
+          userId: req.user ? req.user.id : null,
+          orderId: order.id,
+          type: "recharge_mobile",
+          phone: `+${cleanPhone}`,
+          operatorName: operatorName || ""
         });
 
-        const data = await response.json();
-        if (data.response_code === "00") {
-          await order.update({ stripeSessionId: data.token });
-          return res.json({ url: data.url });
+        const backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 4000}`;
+        // Pour PayTech, utiliser FRONTEND_URL depuis l'env (ne jamais utiliser localhost car PayTech le rejette)
+        const paytechFrontUrl = process.env.FRONTEND_URL || (originUrl.includes("localhost") ? "https://comoresbiachara.site" : originUrl);
+
+        const payload = {
+          item_name: `Recharge Crédit Mobile ${operatorName || "Comores"} (+${cleanPhone})`,
+          item_price: Math.round(Number(amountEur) * 655), // Conversion EUR → XOF (1 EUR ≈ 655 XOF)
+          currency: "XOF",
+          ref_command: refCommand,
+          command_name: `Recharge mobile ${cleanPhone} via ${req.boutique.nom}`,
+          env: env,
+          ipn_url: `${backendUrl}/api/webhooks/paytech`,
+          success_url: `${paytechFrontUrl}/recharge-mobile?status=success&phone=${encodeURIComponent(cleanPhone.replace(/^269/, ""))}&order_id=${order.id}`,
+          cancel_url: `${paytechFrontUrl}/recharge-mobile?status=canceled`,
+          custom_field: customField
+        };
+
+        // Cibler le moyen de paiement Wave ou Orange Money
+        // Valeurs exactes acceptées par PayTech :
+        // Wave, Wave CI, Orange Money, Orange Money CI, Orange Money ML, etc.
+        if (moyenPaiement === "wave") payload.target_payment = "Wave";
+        if (moyenPaiement === "orange") payload.target_payment = "Orange Money";
+
+        const result = await createPaytechPaymentLink({ apiKey, apiSecret, payload });
+
+        if (result.success) {
+          await order.update({ stripeSessionId: refCommand });
+          return res.json({ url: result.url });
         } else {
-          return res.status(400).json({ message: "Erreur PayDunya: " + (data.response_text || "Inconnue") });
+          console.error("PayTech Recharge Error:", result.error);
+          return res.status(400).json({ message: "Erreur PayTech: " + result.error });
         }
       } catch (err) {
-        console.error("PayDunya Error:", err);
-        return res.status(500).json({ message: "Erreur création session PayDunya." });
+        console.error("PayTech Recharge Error:", err);
+        return res.status(500).json({ message: "Erreur lors de la création du lien de paiement PayTech." });
       }
     }
 

@@ -11,6 +11,7 @@ const Boutique = sequelize.define("Boutique", {
     defaultValue: "standard",
   },
   statut: { type: DataTypes.ENUM("active", "suspendue"), defaultValue: "active" },
+  devise: { type: DataTypes.STRING(20), defaultValue: "KMF" },
   fraisLivraison: { type: DataTypes.STRING(255), defaultValue: "1000" },
   zonesLivraison: { type: DataTypes.STRING(255), defaultValue: "" },
   telephone: { type: DataTypes.STRING(20) },
@@ -47,7 +48,9 @@ const Boutique = sequelize.define("Boutique", {
       especes: true,
       mvola: true,
       holam: true,
-      carte: false
+      carte: false,
+      wave: true,    // Wave via PayTech
+      orange: true   // Orange Money via PayTech
     }
   },
   customDomain: { type: DataTypes.STRING(255), allowNull: true },
@@ -55,9 +58,13 @@ const Boutique = sequelize.define("Boutique", {
   stripeSecretKey: { type: DataTypes.STRING(255), allowNull: true, field: "stripe_secret_key" },
   stripeAccountId: { type: DataTypes.STRING(255), allowNull: true, field: "stripe_account_id" },
   stripeOnboardingComplete: { type: DataTypes.BOOLEAN, defaultValue: false, field: "stripe_onboarding_complete" },
+  // PayDunya (ancien — conservé pour compatibilité)
   paydunyaMasterKey: { type: DataTypes.STRING(255), allowNull: true },
   paydunyaPrivateKey: { type: DataTypes.STRING(255), allowNull: true },
-  paydunyaToken: { type: DataTypes.STRING(255), allowNull: true }
+  paydunyaToken: { type: DataTypes.STRING(255), allowNull: true },
+  // PayTech — Wave & Orange Money
+  paytechApiKey:    { type: DataTypes.STRING(255), allowNull: true, field: "paytech_api_key" },
+  paytechApiSecret: { type: DataTypes.STRING(255), allowNull: true, field: "paytech_api_secret" }
 }, { tableName: "boutiques" });
 
 module.exports = Boutique;

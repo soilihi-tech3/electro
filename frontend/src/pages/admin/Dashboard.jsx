@@ -9,7 +9,7 @@ import { subscribeRealtime } from "../../utils/realtime.js";
 import { Skel, SkeletonStatCards } from "../../components/Skeleton.jsx";
 import { readCache, writeCache } from "../../utils/swrCache.js";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function Dashboard() {
   const { user, boutique, theme } = useAuth();
@@ -426,27 +426,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 11. PRODUITS EXPIRANT BIENTÔT */}
-        <div style={{
-          background: "var(--card)", border: "1px solid var(--line)", borderRadius: 16, padding: "14px 16px",
-          position: "relative", overflow: "hidden", display: "flex", flexDirection: "column", justifyContent: "space-between",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
-        }}>
-          <div style={{ position: "absolute", right: -12, top: -12, width: 60, height: 60, borderRadius: "50%", background: data.produitsExpirantCount > 0 ? "rgba(217,119,6,0.1)" : "rgba(100,116,139,0.06)", pointerEvents: "none" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: data.produitsExpirantCount > 0 ? "#FEF3C7" : "var(--paper)", color: data.produitsExpirantCount > 0 ? "#D97706" : "var(--sage)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Clock size={17} />
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: data.produitsExpirantCount > 0 ? "#D97706" : "var(--ink)", letterSpacing: "-0.02em" }}>
-              {data.produitsExpirantCount || 0}
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: data.produitsExpirantCount > 0 ? "#D97706" : "var(--muted)", marginTop: 2 }}>
-              Expirations proches
-            </div>
-          </div>
-        </div>
+
 
       </div>
 

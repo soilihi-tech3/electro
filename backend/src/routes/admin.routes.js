@@ -18,25 +18,8 @@ function purgeCache() {
 router.use(authenticate, requireRole("admin", "employe"), requireOwnBoutique);
 
 async function checkExpirationNotification(product, boutiqueId) {
-  if (product.dateExpiration) {
-    const exp = new Date(product.dateExpiration);
-    const now = new Date();
-    const diffDays = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 30) {
-      const admins = await User.findAll({ where: { boutiqueId, role: "admin" } });
-      for (const adm of admins) {
-        await Notification.create({
-          userId: adm.id,
-          boutiqueId,
-          title: "Alerte Expiration Produit",
-          message: diffDays < 0 
-            ? `Le produit "${product.nom}" est déjà expiré depuis le ${product.dateExpiration}.`
-            : `Le produit "${product.nom}" va expirer dans ${diffDays} jour(s) (${product.dateExpiration}).`,
-          type: "expiration"
-        }).catch(() => {});
-      }
-    }
-  }
+  // Désactivé car les accessoires électriques et matériel n'expirent pas
+  return;
 }
 
 /* ---------------------- TABLEAU DE BORD ---------------------- */
@@ -206,14 +189,8 @@ router.get("/dashboard", async (req, res, next) => {
     const valeurStockAchat = produits.reduce((sum, p) => sum + (Number(p.stock || 0) * Number(p.coutAchat || 0)), 0);
     const totalVentesCount = prodsWithStats.reduce((sum, p) => sum + Number(p.ventesCount || 0), 0);
 
-    // Produits arrivant à péremption ou expirés (dans les 30 prochains jours)
-    const in30Days = new Date();
-    in30Days.setDate(in30Days.getDate() + 30);
-    const produitsExpirant = produits.filter((p) => {
-      if (!p.dateExpiration) return false;
-      const exp = new Date(p.dateExpiration);
-      return exp <= in30Days;
-    });
+    // Expirations désactivées pour électricité et matériel
+    const produitsExpirant = [];
 
     res.json({
       isEmploye: false,
@@ -340,17 +317,7 @@ router.get("/products", async (req, res, next) => {
 
 router.post("/products", async (req, res, next) => {
   try {
-    if (req.body.dateExpiration) {
-      const expDate = new Date(req.body.dateExpiration);
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      if (expDate < todayMidnight) {
-        return res.status(400).json({ message: "Impossible d'ajouter un produit dont la date d'expiration est déjà dépassée !" });
-      }
-    }
-
     const product = await Product.create({ ...req.body, boutiqueId: req.boutiqueId });
-    await checkExpirationNotification(product, req.boutiqueId);
 
     // Auto-enregistrement dans la table des Achats / Approvisionnements
     if (product.stock > 0 || Number(product.coutAchat) > 0 || product.fournisseurId) {
@@ -382,17 +349,7 @@ router.put("/products/:id", async (req, res, next) => {
     const product = await Product.findOne({ where: { id: req.params.id, boutiqueId: req.boutiqueId } });
     if (!product) return res.status(404).json({ message: "Produit introuvable." });
 
-    if (req.body.dateExpiration) {
-      const expDate = new Date(req.body.dateExpiration);
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      if (expDate < todayMidnight) {
-        return res.status(400).json({ message: "Impossible de régler la date d'expiration sur une date déjà dépassée !" });
-      }
-    }
-
     await product.update(req.body);
-    await checkExpirationNotification(product, req.boutiqueId);
 
     const fullProduct = await Product.findByPk(product.id, {
       include: [Category, { model: Fournisseur, as: "fournisseur" }]
@@ -807,7 +764,7 @@ router.put("/boutique", requireRole("admin"), async (req, res, next) => {
   try {
     const boutique = await Boutique.findByPk(req.boutiqueId);
     const { 
-      nom, logoUrl, couleurPrincipale, fraisLivraison, zonesLivraison, 
+      nom, logoUrl, couleurPrincipale, devise, fraisLivraison, zonesLivraison, 
       bannerSlides, sideBanners, telephone, telephone2, adresse, adresse2, adresseRetrait, 
       emailContact, aProposText, aProposImageUrl, horairesOuverture, facebookUrl, instagramUrl, 
       tiktokUrl, whatsappNumber, modesPaiement, modulesActifs,
@@ -828,7 +785,7 @@ router.put("/boutique", requireRole("admin"), async (req, res, next) => {
     }
 
     await boutique.update({ 
-      nom, logoUrl, couleurPrincipale, fraisLivraison, zonesLivraison, 
+      nom, logoUrl, couleurPrincipale, devise: devise || boutique.devise || "KMF", fraisLivraison, zonesLivraison, 
       bannerSlides, sideBanners, telephone, telephone2, adresse, adresse2, adresseRetrait, 
       emailContact, aProposText, aProposImageUrl, horairesOuverture, facebookUrl, instagramUrl, 
       tiktokUrl, whatsappNumber, modesPaiement, modulesActifs,

@@ -8,17 +8,7 @@ import TablePagination from "../../components/TablePagination.jsx";
 
 import { subscribeRealtime } from "../../utils/realtime.js";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
-
-function getExpirationStatus(dateExpiration) {
-  if (!dateExpiration) return null;
-  const exp = new Date(dateExpiration);
-  const now = new Date();
-  const diffDays = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return { status: "expired", days: Math.abs(diffDays), label: `Expiré (-${Math.abs(diffDays)}j)` };
-  if (diffDays <= 30) return { status: "soon", days: diffDays, label: `Expire dans ${diffDays}j` };
-  return { status: "normal", days: diffDays, label: dateExpiration };
-}
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function AdminProduits() {
   const [activeTab, setActiveTab] = useState("liste"); // "liste" | "ajout"
@@ -35,7 +25,6 @@ export default function AdminProduits() {
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
   const [filterStock, setFilterStock] = useState(false);
-  const [filterExpiration, setFilterExpiration] = useState("");
 
   // Modal d'approvisionnement
   const [restockProduct, setRestockProduct] = useState(null);
@@ -57,7 +46,6 @@ export default function AdminProduits() {
     enPromo: false,
     isNouveau: false,
     noteEtoiles: "5",
-    dateExpiration: "",
     poids: "1",
     unite: "Kg",
     coutAchat: "",
@@ -117,7 +105,6 @@ export default function AdminProduits() {
       enPromo: Boolean(product.enPromo || product.prixPromo),
       isNouveau: Boolean(product.isNouveau),
       noteEtoiles: product.noteEtoiles !== undefined && product.noteEtoiles !== null ? String(product.noteEtoiles) : "5",
-      dateExpiration: product.dateExpiration || "",
       poids: product.poids || "1",
       unite: product.unite || "Kg",
       coutAchat: product.coutAchat ?? "",
@@ -139,16 +126,6 @@ export default function AdminProduits() {
     e.preventDefault();
     if (!form.nom || !form.categoryId) return;
 
-    if (form.dateExpiration) {
-      const selectedDate = new Date(form.dateExpiration);
-      const todayMidnight = new Date();
-      todayMidnight.setHours(0, 0, 0, 0);
-      if (selectedDate < todayMidnight) {
-        toast.error("Impossible d'ajouter un produit dont la date d'expiration est déjà dépassée ! Veuillez choisir une date valide.");
-        return;
-      }
-    }
-
     // Sanitize: empty string → 0 or null
     const payload = {
       ...form,
@@ -162,8 +139,7 @@ export default function AdminProduits() {
       seuilAlerte: form.seuilAlerte !== "" ? Number(form.seuilAlerte) : 5,
       categoryId: Number(form.categoryId),
       poids: form.poids || "1",
-      dateExpiration: form.dateExpiration || null,
-      famille: form.famille || "Alimentation"
+      famille: form.famille || "Électronique"
     };
 
     try {
@@ -254,36 +230,17 @@ export default function AdminProduits() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Filter products by search query, category, low stock, and expiration status
+  // Filter products by search query, category, low stock
   const filteredProducts = products.filter((p) => {
     const matchSearch = !search || p.nom?.toLowerCase().includes(search.toLowerCase());
     const matchCat = !filterCat || String(p.categoryId) === String(filterCat);
     const matchStock = !filterStock || p.stock <= p.seuilAlerte;
 
-    const expSt = getExpirationStatus(p.dateExpiration);
-    let matchExp = true;
-    if (filterExpiration === "bientot") {
-      matchExp = expSt && expSt.status === "soon";
-    } else if (filterExpiration === "expires") {
-      matchExp = expSt && expSt.status === "expired";
-    }
-
-    return matchSearch && matchCat && matchStock && matchExp;
+    return matchSearch && matchCat && matchStock;
   });
 
-  // Expiration KPIs
-  const bientotExpiresCount = products.filter(p => {
-    const st = getExpirationStatus(p.dateExpiration);
-    return st && st.status === "soon";
-  }).length;
-
-  const expiresCount = products.filter(p => {
-    const st = getExpirationStatus(p.dateExpiration);
-    return st && st.status === "expired";
-  }).length;
-
   // Reset page to 1 when filters change
-  useEffect(() => { setCurrentPage(1); }, [search, filterCat, filterStock, filterExpiration]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterCat, filterStock]);
 
   const totalItems = filteredProducts.length;
   const paginatedProducts = filteredProducts.slice(
@@ -388,16 +345,7 @@ export default function AdminProduits() {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
               </select>
 
-              <select 
-                className="bs-select" 
-                style={{ width: 220 }} 
-                value={filterExpiration} 
-                onChange={(e) => setFilterExpiration(e.target.value)}
-              >
-                <option value="">Toutes les expirations</option>
-                <option value="bientot">Bientôt expirés (≤ 30 jours)</option>
-                <option value="expires">Déjà expirés</option>
-              </select>
+
 
               <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, cursor: "pointer", background: filterStock ? "#FAD2CD" : "var(--forest-light)", padding: "0 12px", borderRadius: 8, color: filterStock ? "#B4483A" : "var(--forest-dark)", fontWeight: 700, height: 40 }}>
                 <input type="checkbox" checked={filterStock} onChange={(e) => setFilterStock(e.target.checked)} style={{ margin: 0 }} />
@@ -415,23 +363,21 @@ export default function AdminProduits() {
                 <th>Prix de vente</th>
                 <th>Coût d'achat</th>
                 <th>Stock</th>
-                <th>Expiration</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <SkeletonTableRows rows={6} cols={8} />
+                <SkeletonTableRows rows={6} cols={7} />
               )}
               {!loading && paginatedProducts.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
+                  <td colSpan={7} style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
                     Aucun produit ne correspond à votre recherche.
                   </td>
                 </tr>
               )}
               {!loading && paginatedProducts.map((p) => {
-                const expSt = getExpirationStatus(p.dateExpiration);
                 const supplierName = p.fournisseur ? (p.fournisseur.nom || p.fournisseur.nomCompany || p.fournisseur.nomContact) : null;
                 return (
                   <tr key={p.id}>
@@ -475,21 +421,7 @@ export default function AdminProduits() {
                       <span style={{ fontWeight: 700 }}>{p.stock}</span> {p.unite}
                       {p.stock <= p.seuilAlerte && <AlertTriangle size={14} color="#B4483A" style={{ marginLeft: 6, verticalAlign: "-2px" }} />}
                     </td>
-                    <td>
-                      {!expSt ? (
-                        <span style={{ color: "var(--muted)", fontSize: 12 }}>—</span>
-                      ) : expSt.status === "expired" ? (
-                        <span style={{ background: "#FEE2E2", color: "#991B1B", padding: "4px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          {expSt.label}
-                        </span>
-                      ) : expSt.status === "soon" ? (
-                        <span style={{ background: "#FEF3C7", color: "#92400E", padding: "4px 10px", borderRadius: 12, fontSize: 12, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          {expSt.label}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: "var(--muted)" }}>{p.dateExpiration}</span>
-                      )}
-                    </td>
+
                     <td>
                       <button
                         className="bs-icon-btn"
@@ -714,17 +646,7 @@ export default function AdminProduits() {
               </div>
             </div>
 
-            <div className="bs-form-row-3">
-              <div className="bs-input-group">
-                <label>Date d'expiration (Péremption)</label>
-                <input
-                  className="bs-input"
-                  type="date"
-                  value={form.dateExpiration}
-                  onChange={(e) => set("dateExpiration", e.target.value)}
-                />
-              </div>
-
+            <div className="bs-form-row-2">
               <div className="bs-input-group">
                 <label>Stock disponible</label>
                 <input
@@ -737,12 +659,12 @@ export default function AdminProduits() {
               </div>
 
               <div className="bs-input-group">
-                <label>Coût d'achat (€)</label>
+                <label>Coût d'achat unitaire</label>
                 <input
                   className="bs-input"
                   type="number"
                   step="0.01"
-                  placeholder="ex: 8.50"
+                  placeholder="ex: 8500"
                   value={form.coutAchat}
                   onChange={(e) => set("coutAchat", e.target.value)}
                 />

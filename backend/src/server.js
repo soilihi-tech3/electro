@@ -29,6 +29,10 @@ app.set("trust proxy", 1);
 const stripeWebhookRoutes = require("./routes/stripe.webhook");
 app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRoutes);
 
+// Webhook PayTech — IPN pour Wave & Orange Money (PayTech envoie du JSON, pas besoin de raw body)
+const paytechWebhookRoutes = require("./routes/paytech.webhook");
+app.use("/api/webhooks/paytech", paytechWebhookRoutes);
+
 // High Performance Compression (GZIP/Brotli)
 app.use(compression());
 
@@ -225,7 +229,11 @@ async function ensureColumns() {
       { name: "paydunya_master_key", type: "VARCHAR(255) NULL" },
       { name: "paydunya_private_key", type: "VARCHAR(255) NULL" },
       { name: "paydunya_token", type: "VARCHAR(255) NULL" },
-      { name: "a_propos_image_url", type: "LONGTEXT NULL" }
+      { name: "a_propos_image_url", type: "LONGTEXT NULL" },
+      // PayTech — Wave & Orange Money
+      { name: "paytech_api_key",    type: "VARCHAR(255) NULL" },
+      { name: "paytech_api_secret", type: "VARCHAR(255) NULL" }
+
     ];
 
     for (const col of columnsToAddBoutique) {

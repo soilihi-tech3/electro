@@ -5,8 +5,8 @@
 --  réelle de la base pour référence / audit / reprise en SQL pur.)
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS boutique_saas CHARACTER SET utf8mb4;
-USE boutique_saas;
+CREATE DATABASE IF NOT EXISTS electronicdb CHARACTER SET utf8mb4;
+USE electronicdb;
 
 CREATE TABLE boutiques (
   id INT AUTO_INCREMENT PRIMARY KEY,

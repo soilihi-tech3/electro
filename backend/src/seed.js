@@ -24,25 +24,25 @@ async function runSeed() {
   const bannerSlides = [
     {
       id: 1,
-      title: "Marché Frais & Produit Bio Direct Producteurs",
-      subtitle: "Fruits gorgés de soleil, légumes de saison et épicerie locale livrés directement chez vous.",
-      imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80",
-      buttonText: "Découvrir le marché",
+      title: "Électricité, Électronique & Matériel Pro",
+      subtitle: "Large gamme d'accessoires électriques, prises, disjoncteurs et câblage haute sécurité.",
+      imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1600&q=80",
+      buttonText: "Découvrir le catalogue",
       linkUrl: "/catalogue"
     },
     {
       id: 2,
-      title: "Soins & Cosmétiques 100% Naturels",
-      subtitle: "Sublimez votre beauté au naturel avec nos beurres purs, huiles bio et sérums éclat.",
-      imageUrl: "https://images.unsplash.com/photo-1608248597263-00079e96515c?auto=format&fit=crop&w=1600&q=80",
-      buttonText: "Voir les cosmétiques",
-      linkUrl: "/catalogue?categoryId=4"
+      title: "Climatisation & Ventilation Haute Performance",
+      subtitle: "Climatiseurs split Inverter et ventilateurs puissants pour un confort thermique optimal.",
+      imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1600&q=80",
+      buttonText: "Voir les climatiseurs",
+      linkUrl: "/catalogue"
     },
     {
       id: 3,
-      title: "Livraison Express & Paiement Mobile",
-      subtitle: "Payez par Mvola, Holam ou à la livraison en toute sécurité.",
-      imageUrl: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=1600&q=80",
+      title: "Outillage & Équipements de Construction",
+      subtitle: "Tout pour vos chantiers, installations électriques et travaux de bâtiment.",
+      imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1600&q=80",
       buttonText: "Commander maintenant",
       linkUrl: "/catalogue"
     }
@@ -50,15 +50,16 @@ async function runSeed() {
 
   // --- 3. Boutique de démonstration ---
   const [boutique] = await Boutique.findOrCreate({
-    where: { slug: "marche-vert" },
+    where: { slug: "electro-pro" },
     defaults: {
-      nom: "Marché Vert Dakar",
-      slug: "marche-vert",
-      logoUrl: "https://images.unsplash.com/photo-1543083477-4f785aeafaa9?auto=format&fit=crop&w=200&q=80",
-      couleurPrincipale: "#163424",
+      nom: "ElectroMat Pro",
+      slug: "electro-pro",
+      logoUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=200&q=80",
+      couleurPrincipale: "#1565C0",
+      devise: "KMF",
       formuleAbonnement: "commission",
-      fraisLivraison: 1000,
-      zonesLivraison: "Dakar, Pikine, Guédiawaye, Rufisque, Moroni",
+      fraisLivraison: 1500,
+      zonesLivraison: "Moroni, Mitsamiouli, Foumbouni, Grand Comore, Régions",
       bannerSlides: bannerSlides
     }
   });
@@ -66,10 +67,10 @@ async function runSeed() {
   // --- 4. Comptes Administrateur, Employés & Client ---
   const usersToSeed = [
     { email: "superadmin@boutique-saas.com", nom: "Super Admin", role: "super_admin", pw: "SuperAdmin123!" },
-    { email: "admin@marche-vert.com", nom: "Aïssatou Ba (Admin)", role: "admin", boutiqueId: boutique.id, pw: "Admin123!" },
-    { email: "ibrahima@marche-vert.com", nom: "Ibrahima Ndiaye", role: "employe", boutiqueId: boutique.id, pw: "Employe123!", permissions: ["voir_dashboard", "gerer_categories", "gerer_produits", "gerer_commandes"] },
-    { email: "khady@marche-vert.com", nom: "Khady Diop", role: "employe", boutiqueId: boutique.id, pw: "Employe123!", permissions: ["voir_dashboard", "gerer_commandes"] },
-    { email: "client@example.com", nom: "Awa Sarr", role: "client", pw: "Client123!" },
+    { email: "admin@electro-pro.com", nom: "Karim Said (Admin)", role: "admin", boutiqueId: boutique.id, pw: "Admin123!" },
+    { email: "technicien@electro-pro.com", nom: "Ibrahim Ali", role: "employe", boutiqueId: boutique.id, pw: "Employe123!", permissions: ["voir_dashboard", "gerer_categories", "gerer_produits", "gerer_commandes"] },
+    { email: "vendeur@electro-pro.com", nom: "Fatima Mohamed", role: "employe", boutiqueId: boutique.id, pw: "Employe123!", permissions: ["voir_dashboard", "gerer_commandes"] },
+    { email: "client@example.com", nom: "Salim Ahmed", role: "client", pw: "Client123!" },
   ];
 
   let emp2 = null;
@@ -93,18 +94,18 @@ async function runSeed() {
       if (u.permissions) usr.permissions = u.permissions;
       await usr.save();
     }
-    if (u.email === "khady@marche-vert.com") emp2 = usr;
+    if (u.email === "vendeur@electro-pro.com") emp2 = usr;
     if (u.email === "client@example.com") clientUser = usr;
   }
 
   // --- 5. Catégories ---
   const catList = [
-    { nom: "Légumes", famille: "alimentation", imageUrl: "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?auto=format&fit=crop&w=400&q=80" },
-    { nom: "Fruits", famille: "alimentation", imageUrl: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&w=400&q=80" },
-    { nom: "Épicerie", famille: "alimentation", imageUrl: "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?auto=format&fit=crop&w=400&q=80" },
-    { nom: "Soins visage", famille: "cosmetique", imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=400&q=80" },
-    { nom: "Soins corps", famille: "cosmetique", imageUrl: "https://images.unsplash.com/photo-1608248597263-00079e96515c?auto=format&fit=crop&w=400&q=80" },
-    { nom: "Cheveux", famille: "cosmetique", imageUrl: "https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?auto=format&fit=crop&w=400&q=80" },
+    { nom: "Climatisation & Froid", famille: "electronique", imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=400&q=80" },
+    { nom: "Ventilation", famille: "electronique", imageUrl: "https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=400&q=80" },
+    { nom: "Éclairage & Ampoules", famille: "electricite", imageUrl: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=400&q=80" },
+    { nom: "Prises & Interrupteurs", famille: "electricite", imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=400&q=80" },
+    { nom: "Câbles & Protection", famille: "electricite", imageUrl: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=400&q=80" },
+    { nom: "Outillage & Construction", famille: "construction", imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=400&q=80" },
   ];
 
   const cats = {};
@@ -119,59 +120,64 @@ async function runSeed() {
   // --- 6. Produits ---
   const produitsData = [
     {
-      nom: "Tomates fraîches Bio", cat: "Légumes", prix: 900, unite: "kg", stock: 42, seuilAlerte: 10, coutAchat: 500, ventesCount: 5,
-      imageUrl: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1546470427-227c7369a679?auto=format&fit=crop&w=600&q=80"
+      nom: "Climatiseur Split 12000 BTU Inverter", cat: "Climatisation & Froid", prix: 185000, prixPromo: 169000, unite: "unité", stock: 12, seuilAlerte: 3, coutAchat: 140000, ventesCount: 8,
+      description: "Climatiseur Split haute efficacité énergétique A++, gaz écologique R32, télécommande incluse et mode silencieux.",
+      imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Oignons violets locaux", cat: "Légumes", prix: 700, prixPromo: 550, unite: "kg", stock: 8, seuilAlerte: 10, coutAchat: 350, ventesCount: 3,
-      imageUrl: "https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1508747703725-719777637510?auto=format&fit=crop&w=600&q=80"
+      nom: "Ventilateur sur Pied Turbo 16\" Silencieux", cat: "Ventilation", prix: 18500, prixPromo: 15900, unite: "pièce", stock: 35, seuilAlerte: 8, coutAchat: 11000, ventesCount: 24,
+      description: "Ventilateur robuste à 3 vitesses, oscillation 90 degrés, hauteur réglable et consommation réduite.",
+      imageUrl: "https://images.unsplash.com/photo-1618220179428-22790b461013?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Mangues Kent très sucrées", cat: "Fruits", prix: 1200, unite: "kg", stock: 30, seuilAlerte: 8, coutAchat: 700, ventesCount: 8,
-      imageUrl: "https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1601493700631-2b16ec4b4716?auto=format&fit=crop&w=600&q=80"
+      nom: "Ventilateur Plafonnier 3 Pales 56\"", cat: "Ventilation", prix: 24500, unite: "unité", stock: 20, seuilAlerte: 5, coutAchat: 17000, ventesCount: 15,
+      description: "Brasseur d'air plafonnier ultra puissant avec régulateur mural 5 vitesses.",
+      imageUrl: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Bananes plantain mûres", cat: "Fruits", prix: 800, unite: "kg", stock: 25, seuilAlerte: 10, coutAchat: 450, ventesCount: 3,
-      imageUrl: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1603833665858-e61d17a86224?auto=format&fit=crop&w=600&q=80"
+      nom: "Lot de 5 Ampoules LED 15W E27 Blanc Chaud", cat: "Éclairage & Ampoules", prix: 6500, prixPromo: 5500, unite: "lot", stock: 60, seuilAlerte: 15, coutAchat: 3500, ventesCount: 42,
+      description: "Ampoules LED ultra économiques équivalent 100W, longue durée de vie 25 000 heures.",
+      imageUrl: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Riz brisé parfumé 100%", cat: "Épicerie", prix: 15000, prixPromo: 12900, unite: "sac 25kg", stock: 14, seuilAlerte: 5, coutAchat: 10500, ventesCount: 2,
-      imageUrl: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?auto=format&fit=crop&w=600&q=80"
+      nom: "Projecteur LED Extérieur 50W IP66", cat: "Éclairage & Ampoules", prix: 14000, unite: "pièce", stock: 25, seuilAlerte: 5, coutAchat: 9000, ventesCount: 11,
+      description: "Projecteur LED étanche en aluminium pour cour, jardin et façades de bâtiment.",
+      imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Huile d'arachide pure", cat: "Épicerie", prix: 3200, unite: "bidon 2L", stock: 3, seuilAlerte: 6, coutAchat: 2200, ventesCount: 4,
-      imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1620706857370-e1b9770e8bb1?auto=format&fit=crop&w=600&q=80"
+      nom: "Prise Murale Étanche 16A 2P+T", cat: "Prises & Interrupteurs", prix: 2500, unite: "pièce", stock: 80, seuilAlerte: 20, coutAchat: 1400, ventesCount: 65,
+      description: "Prise murale avec clapet de protection IP55 conforme aux normes de sécurité internationales.",
+      imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Sérum Visage Vitamine C", cat: "Soins visage", prix: 8500, prixPromo: 6900, unite: "30ml", stock: 18, seuilAlerte: 5, coutAchat: 4000, ventesCount: 6,
-      imageUrl: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1608248597263-00079e96515c?auto=format&fit=crop&w=600&q=80"
+      nom: "Multiprise Parafoudre 6 Prises + 2 Ports USB", cat: "Prises & Interrupteurs", prix: 8500, prixPromo: 7200, unite: "pièce", stock: 30, seuilAlerte: 8, coutAchat: 4800, ventesCount: 19,
+      description: "Protection contre les surtensions, câble renforcé 2 mètres et interrupteur lumineux.",
+      imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Beurre de Karité Brut Pur", cat: "Soins corps", prix: 3500, unite: "250g", stock: 40, seuilAlerte: 10, coutAchat: 1500, ventesCount: 9,
-      imageUrl: "https://images.unsplash.com/photo-1567928256561-125026a7a0b5?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=600&q=80"
+      nom: "Rouleau Câble Électrique TH 2.5mm² (100m)", cat: "Câbles & Protection", prix: 28000, unite: "rouleau", stock: 18, seuilAlerte: 5, coutAchat: 21000, ventesCount: 14,
+      description: "Fil conducteur cuivre rigide standard pour prises de courant et installations domestiques.",
+      imageUrl: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Savon Noir Gommant Eclat", cat: "Soins corps", prix: 2200, unite: "pièce", stock: 55, seuilAlerte: 15, coutAchat: 900, ventesCount: 12,
-      imageUrl: "https://images.unsplash.com/photo-1607006482170-a35a16d510a7?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=600&q=80"
+      nom: "Disjoncteur Différentiel 32A Monophasé", cat: "Câbles & Protection", prix: 9500, unite: "pièce", stock: 40, seuilAlerte: 10, coutAchat: 6200, ventesCount: 22,
+      description: "Disjoncteur de protection magnétothermique 32A courbe C pour tableau électrique.",
+      imageUrl: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=600&q=80"
     },
     {
-      nom: "Huile Capillaire Ricin & Argan", cat: "Cheveux", prix: 4200, prixPromo: 3400, unite: "100ml", stock: 6, seuilAlerte: 8, coutAchat: 2000, ventesCount: 7,
-      imageUrl: "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1526947425960-945c6e72858f?auto=format&fit=crop&w=600&q=80"
-    },
-    {
-      nom: "Citrons Verts Bio", cat: "Fruits", prix: 500, unite: "kg", stock: 60, seuilAlerte: 15, coutAchat: 250, ventesCount: 1,
-      imageUrl: "https://images.unsplash.com/photo-1534531141161-e49d13714bde?auto=format&fit=crop&w=600&q=80",
-      imageUrl2: "https://images.unsplash.com/photo-1590502593747-42a996133562?auto=format&fit=crop&w=600&q=80"
+      nom: "Perceuse Visseuse Sans Fil 18V avec Coffret", cat: "Outillage & Construction", prix: 45000, prixPromo: 39500, unite: "coffret", stock: 15, seuilAlerte: 4, coutAchat: 28000, ventesCount: 9,
+      description: "Perceuse percussion sans fil 18V livrée avec 2 batteries Li-ion, chargeur rapide et 24 accessoires.",
+      imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=600&q=80",
+      imageUrl2: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80"
     }
   ];
 
@@ -198,33 +204,34 @@ async function runSeed() {
   }
 
   // --- 7. Avis & Commandes ---
-  if (produits["Tomates fraîches Bio"] && clientUser) {
+  const firstProd = produits["Climatiseur Split 12000 BTU Inverter"] || Object.values(produits)[0];
+  if (firstProd && clientUser) {
     await Review.findOrCreate({
-      where: { productId: produits["Tomates fraîches Bio"].id, userId: clientUser.id },
-      defaults: { productId: produits["Tomates fraîches Bio"].id, userId: clientUser.id, note: 5, commentaire: "Très fraîches, livrées le jour même." }
+      where: { productId: firstProd.id, userId: clientUser.id },
+      defaults: { productId: firstProd.id, userId: clientUser.id, note: 5, commentaire: "Produit de qualité supérieure, refroidit très rapidement !" }
     });
   }
 
   const nbOrders = await Order.count({ where: { boutiqueId: boutique.id } });
-  if (nbOrders === 0 && produits["Tomates fraîches Bio"] && clientUser && emp2) {
+  if (nbOrders === 0 && firstProd && clientUser && emp2) {
     const order = await Order.create({
       boutiqueId: boutique.id,
       clientId: clientUser.id,
       statut: "en_livraison",
       modeLivraison: "domicile",
-      adresseLivraison: "Sacré-Cœur 3, Dakar",
+      adresseLivraison: "Moroni Centre, Comores",
       moyenPaiement: "cash",
       employeAssigneId: emp2.id,
-      sousTotal: 2650,
-      fraisLivraison: 1000,
-      total: 3650,
+      sousTotal: Number(firstProd.prixPromo || firstProd.prix),
+      fraisLivraison: 1500,
+      total: Number(firstProd.prixPromo || firstProd.prix) + 1500,
     });
 
     await OrderItem.create({
       orderId: order.id,
-      productId: produits["Tomates fraîches Bio"].id,
-      quantite: 2,
-      prixUnitaire: 900
+      productId: firstProd.id,
+      quantite: 1,
+      prixUnitaire: Number(firstProd.prixPromo || firstProd.prix)
     });
   }
 

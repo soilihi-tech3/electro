@@ -8,7 +8,7 @@ import api, { SLUG } from "../../api";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 const STATUT_CONFIG = {
   en_attente_paiement: { label: "Paiement en attente", color: "#B45309", bg: "#FEF3C7", Icon: Clock, step: 0 },

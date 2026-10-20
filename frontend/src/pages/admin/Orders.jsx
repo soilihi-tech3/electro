@@ -8,7 +8,7 @@ import TablePagination from "../../components/TablePagination";
 import { SkeletonStatCards, SkeletonTableRows } from "../../components/Skeleton.jsx";
 import { readCache, writeCache } from "../../utils/swrCache.js";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 const formatOrderNum = (id) => `COM-B${String(id).padStart(3, "0")}`;
 
 const STATUTS_FILTER = [

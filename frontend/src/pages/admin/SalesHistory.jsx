@@ -10,7 +10,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import { subscribeRealtime } from "../../utils/realtime.js";
 import ReceiptModal from "../../components/ReceiptModal.jsx";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 const MONTHS = [
   { value: "01", label: "Janvier" },

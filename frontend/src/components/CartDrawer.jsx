@@ -5,7 +5,7 @@ import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { processWhatsAppOrder } from "../utils/whatsappOrder.js";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../utils/currency.js";
 
 export default function CartDrawer({ onClose }) {
   const { cart, updateQuantite, setExactQuantite, removeFromCart, subtotal, clearCart, showToast } = useCart();

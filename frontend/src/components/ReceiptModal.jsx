@@ -2,7 +2,7 @@ import React from "react";
 import { Printer, X, CheckCircle, Smartphone, CreditCard, ShoppingBag, Clock, Package, Truck } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../utils/currency.js";
 
 const STATUT_LABELS = {
   en_attente_paiement: "PAIEMENT EN ATTENTE",

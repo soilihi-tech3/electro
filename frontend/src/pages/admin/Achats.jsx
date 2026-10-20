@@ -3,7 +3,7 @@ import { PlusCircle, ShoppingBag, Building, DollarSign, Calendar, Package, X, Ch
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function Achats() {
   const [achats, setAchats] = useState([]);

@@ -1,4 +1,5 @@
-export const fcfa = (n) => Number(n || 0).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice } from "../../../utils/currency.js";
+export const fcfa = (n) => formatPrice(n);
 
 export const DEFAULT_MODULES = {
   vente: true,

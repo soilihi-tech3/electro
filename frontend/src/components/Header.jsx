@@ -9,7 +9,7 @@ import CartDrawer from "./CartDrawer.jsx";
 import NotificationMenu from "./NotificationMenu.jsx";
 import ProfileModal from "./ProfileModal.jsx";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../utils/currency.js";
 
 export default function Header({ setCartOpen: setCartOpenProp }) {
   const { user, boutique: boutiqueContext, logout, theme, toggleTheme } = useAuth();

@@ -5,7 +5,7 @@ import { CheckCircle, ShoppingBag, ArrowRight, Package, Truck, MapPin, Store } f
 import api, { SLUG } from "../../api";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function Confirmation() {
   const { id } = useParams();

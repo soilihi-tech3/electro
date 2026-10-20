@@ -10,7 +10,7 @@ import { subscribeRealtime } from "../../utils/realtime.js";
 import { Skel } from "../../components/Skeleton.jsx";
 import { readCache, writeCache } from "../../utils/swrCache.js";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function ProductDetail() {
   const { id } = useParams();

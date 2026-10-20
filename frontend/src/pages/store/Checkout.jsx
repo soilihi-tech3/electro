@@ -8,7 +8,7 @@ import { processWhatsAppOrder, formatWhatsAppOrderMessage } from "../../utils/wh
 
 import { MvolaLogo, WeroLogo, OnlinePaymentBadges, CashLogo } from "../../components/PaymentLogos";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function Checkout() {
   const { cart, subtotal, updateQuantite, removeFromCart, clearCart, showToast } = useCart();
@@ -43,7 +43,7 @@ export default function Checkout() {
     }
   }, [user]);
 
-  const defaultModes = { especes: true, mvola: true, holam: true, carte: false };
+  const defaultModes = { especes: true, mvola: true, holam: true, carte: false, wave: true, orange: true };
   const modesPaiement = { ...defaultModes, ...(boutique?.modesPaiement || {}) };
   const isWhatsAppEnabled = boutique?.modulesActifs?.commanderWhatsapp !== false;
 
@@ -55,6 +55,36 @@ export default function Checkout() {
     { 
       id: "mvola", key: "mvola", label: "MVola", sub: "Paiement mobile sécurisé", Icon: Smartphone, available: !!modesPaiement.mvola,
       renderLogo: () => <MvolaLogo height={32} />
+    },
+    // Wave — PayTech
+    {
+      id: "wave", key: "wave", label: "Wave", sub: "Paiement mobile instantané (PayTech)", Icon: Smartphone, available: !!modesPaiement.wave,
+      badgeColor: "#0EA5E9",
+      renderLogo: () => (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <img
+            src="https://paytech.sn/assets/srcs/img/wave-logo.png"
+            alt="Wave" style={{ height: 28, objectFit: "contain" }}
+            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "🌊", style: "font-size:24px" })); }}
+          />
+          <span style={{ fontSize: 9, background: "#0EA5E9", color: "#fff", padding: "2px 5px", borderRadius: 6, fontWeight: 700 }}>PayTech</span>
+        </div>
+      )
+    },
+    // Orange Money — PayTech
+    {
+      id: "orange", key: "orange", label: "Orange Money", sub: "Paiement mobile Orange (PayTech)", Icon: Smartphone, available: !!modesPaiement.orange,
+      badgeColor: "#F97316",
+      renderLogo: () => (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <img
+            src="https://paytech.sn/assets/srcs/img/orange-money-logo.png"
+            alt="Orange Money" style={{ height: 28, objectFit: "contain" }}
+            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "🟠", style: "font-size:24px" })); }}
+          />
+          <span style={{ fontSize: 9, background: "#F97316", color: "#fff", padding: "2px 5px", borderRadius: 6, fontWeight: 700 }}>PayTech</span>
+        </div>
+      )
     },
     { 
       id: "wero", key: "holam", label: "Wero", sub: "Paiement instantané européen Wero", Icon: Smartphone, available: !!modesPaiement.holam,
@@ -144,7 +174,17 @@ export default function Checkout() {
         return;
       }
 
-      // Si le paiement est via Stripe (Carte), rediriger vers l'URL retournée
+      // Paiement via PayTech — Wave ou Orange Money → redirection
+      if (form.moyenPaiement === "wave" || form.moyenPaiement === "orange") {
+        const sessionRes = await api.post(`/store/${SLUG}/create-checkout-session`, { orderId: res.data.id, moyenPaiement: form.moyenPaiement });
+        if (sessionRes.data.url) {
+          clearCart();
+          window.location.href = sessionRes.data.url;
+          return;
+        }
+      }
+
+      // Paiement via Stripe (Carte) → redirection
       if (form.moyenPaiement === "carte") {
         const sessionRes = await api.post(`/store/${SLUG}/create-checkout-session`, { orderId: res.data.id });
         if (sessionRes.data.url) {

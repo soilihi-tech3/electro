@@ -1,4 +1,5 @@
 import api, { SLUG } from "../api";
+import { formatPrice } from "./currency.js";
 
 export function formatWhatsAppOrderMessage({ boutique, user, cart, subtotal, fraisLivraison, total, orderNumber, form = {} }) {
   const storeName = boutique?.nom || "la boutique";
@@ -41,8 +42,8 @@ export function formatWhatsAppOrderMessage({ boutique, user, cart, subtotal, fra
   cart.forEach((l, index) => {
     const prix = l.product.prixPromo || l.product.prix;
     const itemTotal = prix * l.quantite;
-    const itemTotalFormatted = Number(itemTotal).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
-    const unitPriceFormatted = Number(prix).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+    const itemTotalFormatted = formatPrice(itemTotal, boutique?.devise);
+    const unitPriceFormatted = formatPrice(prix, boutique?.devise);
     
     text += `${index + 1}. *${l.product.nom}*\n`;
     text += `   • Quantité : ${l.quantite} ${l.product.unite || "article(s)"}\n`;
@@ -50,13 +51,13 @@ export function formatWhatsAppOrderMessage({ boutique, user, cart, subtotal, fra
     text += `   • Total ligne : ${itemTotalFormatted}\n`;
   });
 
-  const subtotalFormatted = Number(subtotal).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
-  const totalFormatted = Number(total || subtotal).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+  const subtotalFormatted = formatPrice(subtotal, boutique?.devise);
+  const totalFormatted = formatPrice(total || subtotal, boutique?.devise);
 
   text += `\n💰 *Résumé financier :*\n`;
   text += `- Sous-total : ${subtotalFormatted}\n`;
   if (fraisLivraison !== undefined && fraisLivraison !== 0 && fraisLivraison !== "0") {
-    const fraisFormatted = isNaN(Number(fraisLivraison)) ? fraisLivraison : Number(fraisLivraison).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+    const fraisFormatted = isNaN(Number(fraisLivraison)) ? fraisLivraison : formatPrice(fraisLivraison, boutique?.devise);
     text += `- Frais de livraison : ${fraisFormatted}\n`;
   }
   text += `- *Total Général : ${totalFormatted}*\n\n`;

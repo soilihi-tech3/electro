@@ -5,7 +5,7 @@ import Stars from "./Stars.jsx";
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../utils/currency.js";
 
 export default function ProductCard({ product, isFavorisPage }) {
   const navigate = useNavigate();
@@ -51,9 +51,8 @@ export default function ProductCard({ product, isFavorisPage }) {
   const hasPromo = product.enPromo || (product.prixPromo && Number(product.prixPromo) < Number(product.prix));
   const promoPercent = hasPromo && product.prixPromo ? Math.round(((Number(product.prix) - Number(product.prixPromo)) / Number(product.prix)) * 100) : 0;
 
-  // Check expiration & stock out status
-  const isExpired = product.dateExpiration && new Date(product.dateExpiration) < new Date();
-  const isOutOfStock = product.stock <= 0 || isExpired;
+  // Check stock out status (expiration retirée pour matériel électrique & outillage)
+  const isOutOfStock = product.stock <= 0;
 
   // Cart quantity check
   const itemInCart = cart.find((l) => l.product.id === product.id);
@@ -131,7 +130,7 @@ export default function ProductCard({ product, isFavorisPage }) {
             padding: "4px 10px", borderRadius: 16,
             fontWeight: 800, fontSize: 11, zIndex: 10
           }}>
-            {isExpired ? "Produit Expiré" : "Épuisé / Stock 0"}
+            Épuisé / Stock 0
           </span>
         ) : isMaxStockReached ? (
           <span style={{

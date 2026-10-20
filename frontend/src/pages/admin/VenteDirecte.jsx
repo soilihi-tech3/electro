@@ -7,7 +7,7 @@ import api from "../../api";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { subscribeRealtime } from "../../utils/realtime.js";
 
-const fcfa = (n) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " €";
+import { formatPrice as fcfa } from "../../utils/currency.js";
 
 export default function VenteDirecte() {
   const { boutique } = useAuth();
