@@ -56,33 +56,25 @@ export default function Checkout() {
       id: "mvola", key: "mvola", label: "MVola", sub: "Paiement mobile sécurisé", Icon: Smartphone, available: !!modesPaiement.mvola,
       renderLogo: () => <MvolaLogo height={32} />
     },
-    // Wave — PayTech
+    // Wave — UnitechPay
     {
-      id: "wave", key: "wave", label: "Wave", sub: "Paiement mobile instantané (PayTech)", Icon: Smartphone, available: !!modesPaiement.wave,
+      id: "wave", key: "wave", label: "Wave", sub: "Paiement mobile instantané (UnitechPay)", Icon: Smartphone, available: !!modesPaiement.wave,
       badgeColor: "#0EA5E9",
       renderLogo: () => (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <img
-            src="https://paytech.sn/assets/srcs/img/wave-logo.png"
-            alt="Wave" style={{ height: 28, objectFit: "contain" }}
-            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "Wave", style: "font-size:14px;font-weight:700" })); }}
-          />
-          <span style={{ fontSize: 9, background: "#0EA5E9", color: "#fff", padding: "2px 5px", borderRadius: 6, fontWeight: 700 }}>PayTech</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#1E40AF", background: "#E0F2FE", padding: "2px 8px", borderRadius: 6 }}>WAVE</span>
+          <span style={{ fontSize: 9, background: "#0284C7", color: "#fff", padding: "2px 6px", borderRadius: 6, fontWeight: 700 }}>UnitechPay</span>
         </div>
       )
     },
-    // Orange Money — PayTech
+    // Orange Money — UnitechPay
     {
-      id: "orange", key: "orange", label: "Orange Money", sub: "Paiement mobile Orange (PayTech)", Icon: Smartphone, available: !!modesPaiement.orange,
+      id: "orange", key: "orange", label: "Orange Money", sub: "Paiement mobile Orange (UnitechPay)", Icon: Smartphone, available: !!modesPaiement.orange,
       badgeColor: "#F97316",
       renderLogo: () => (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <img
-            src="https://paytech.sn/assets/srcs/img/orange-money-logo.png"
-            alt="Orange Money" style={{ height: 28, objectFit: "contain" }}
-            onError={(e) => { e.target.replaceWith(Object.assign(document.createElement("span"), { textContent: "Orange", style: "font-size:14px;font-weight:700" })); }}
-          />
-          <span style={{ fontSize: 9, background: "#F97316", color: "#fff", padding: "2px 5px", borderRadius: 6, fontWeight: 700 }}>PayTech</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#EA580C", background: "#FFEDD5", padding: "2px 8px", borderRadius: 6 }}>ORANGE</span>
+          <span style={{ fontSize: 9, background: "#EA580C", color: "#fff", padding: "2px 6px", borderRadius: 6, fontWeight: 700 }}>UnitechPay</span>
         </div>
       )
     },
@@ -174,9 +166,13 @@ export default function Checkout() {
         return;
       }
 
-      // Paiement via PayTech — Wave ou Orange Money → redirection
+      // Paiement via UnitechPay — Wave ou Orange Money → redirection
       if (form.moyenPaiement === "wave" || form.moyenPaiement === "orange") {
-        const sessionRes = await api.post(`/store/${SLUG}/create-checkout-session`, { orderId: res.data.id, moyenPaiement: form.moyenPaiement });
+        const sessionRes = await api.post(`/store/${SLUG}/create-checkout-session`, {
+          orderId: res.data.id,
+          moyenPaiement: form.moyenPaiement,
+          customerNumber: form.telephone || ""
+        });
         if (sessionRes.data.url) {
           clearCart();
           window.location.href = sessionRes.data.url;

@@ -6,41 +6,14 @@ const { cacheMiddleware, clearCachePattern } = require("../config/cache");
 const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../services/email.service");
 const { broadcast, addClient, removeClient } = require("../utils/broadcaster");
 
-/**
- * Crée un lien de paiement PayTech (Wave, Orange Money, etc.)
- * Selon la doc officielle : https://doc.intech.sn/doc_paytech.php
- * POST https://paytech.sn/api/payment/request-payment
- * Headers: API_KEY, API_SECRET
- * Body: item_name, item_price, currency, ref_command, command_name, env,
- *       ipn_url, success_url, cancel_url, custom_field, target_payment (optionnel)
- * Response: { success: 1, token, redirect_url, redirectUrl }
- */
-async function createPaytechPaymentLink({ apiKey, apiSecret, payload }) {
-  const response = await fetch("https://paytech.sn/api/payment/request-payment", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "API_KEY": apiKey,
-      "API_SECRET": apiSecret
-    },
-    body: JSON.stringify(payload)
-  });
+const {
+  createWavePayment,
+  createOrangePayment,
+  createIntlPayment
+} = require("../services/unitechPayService");
 
-  const data = await response.json();
-  // La doc PayTech précise : vérifier que success === 1 (strictement)
-  if (data.success === 1 || data.success === true) {
-    return { success: true, url: data.redirect_url || data.redirectUrl, token: data.token };
-  }
-  return { success: false, error: JSON.stringify(data) };
-}
-
-function getPaytechKeys(boutique) {
-  // Priorité aux clés de la boutique, fallback sur les variables d'env globales
-  return {
-    apiKey:    boutique?.paytechApiKey    || process.env.PAYTECH_API_KEY,
-    apiSecret: boutique?.paytechApiSecret || process.env.PAYTECH_API_SECRET,
-    env:       process.env.PAYTECH_ENV    || "test"  // "test" ou "prod"
-  };
+function getUnitechApiKey(boutique) {
+  return (boutique?.unitechApiKey || process.env.UNITECH_API_KEY || "").trim();
 }
 
 const router = express.Router({ mergeParams: true });
@@ -585,62 +558,57 @@ router.post("/:slug/create-checkout-session", loadBoutique, authenticate, async 
       order.moyenPaiement = moyenPaiementOverride;
     }
 
-    // ── PayTech : Wave & Orange Money ────────────────────────────────────────
-    if (effectiveMoyen === "wave" || effectiveMoyen === "orange" || effectiveMoyen === "paytech") {
+    // ── UnitechPay : Wave & Orange Money (Sénégal) ─────────────────────────
+    if (effectiveMoyen === "wave" || effectiveMoyen === "orange" || effectiveMoyen === "unitechpay" || effectiveMoyen === "paytech") {
       try {
-        const { apiKey, apiSecret, env } = getPaytechKeys(req.boutique);
-
-        if (!apiKey || !apiSecret) {
-          return res.status(400).json({ message: "Les clés PayTech ne sont pas configurées. Veuillez contacter l'administrateur." });
+        const apiKey = getUnitechApiKey(req.boutique);
+        if (!apiKey) {
+          return res.status(400).json({ message: "La clé UnitechPay (UNITECH_API_KEY) n'est pas configurée. Veuillez contacter l'administrateur." });
         }
 
-        // ref_command doit être unique — on utilise l'ID de commande préfixé
-        const refCommand = `ORDER-${order.id}-${Date.now()}`;
+        const frontUrl = process.env.FRONTEND_URL || (originUrl.includes("localhost") ? "https://electro.vercel.app" : originUrl);
+        const successUrl = `${frontUrl}/confirmation/${order.id}?success=true`;
+        const cancelUrl = `${frontUrl}/confirmation/${order.id}?canceled=true`;
+        const customerNumber = req.user?.telephone || req.body?.phone || req.body?.customerNumber || "770000000";
+        const description = `Commande #${order.id} - ${req.boutique.nom}`;
+        const amount = Math.round(Number(order.total));
 
-        // custom_field : nos métadonnées renvoyées dans l'IPN
-        const customField = JSON.stringify({
-          boutiqueId: req.boutique.id,
-          userId: req.user.id,
-          orderId: order.id,
-          type: order.typeVente || "boutique"
-        });
-
-        const backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 4000}`;
-        // Pour PayTech, utiliser FRONTEND_URL depuis l'env (ne jamais utiliser localhost car PayTech le rejette)
-        const paytechFrontUrl = process.env.FRONTEND_URL || (originUrl.includes("localhost") ? "https://comoresbiachara.site" : originUrl);
-
-        const payload = {
-          item_name: `Commande #${order.id} - ${req.boutique.nom}`,
-          item_price: Math.round(Number(order.total)), // En XOF
-          currency: "XOF",
-          ref_command: refCommand,
-          command_name: `Paiement commande #${order.id} sur ${req.boutique.nom}`,
-          env: env,
-          ipn_url: `${backendUrl}/api/webhooks/paytech`,
-          success_url: `${paytechFrontUrl}/confirmation/${order.id}?success=true`,
-          cancel_url: `${paytechFrontUrl}/confirmation/${order.id}?canceled=true`,
-          custom_field: customField
-        };
-
-        // Cibler un moyen de paiement spécifique si demandé
-        // Valeurs exactes acceptées par PayTech :
-        // Wave, Wave CI, Orange Money, Orange Money CI, Orange Money ML, etc.
-        if (effectiveMoyen === "wave") payload.target_payment = "Wave";
-        if (effectiveMoyen === "orange") payload.target_payment = "Orange Money";
-
-        const result = await createPaytechPaymentLink({ apiKey, apiSecret, payload });
-
-        if (result.success) {
-          // On stocke le ref_command dans stripeSessionId pour retrouver la commande dans l'IPN
-          await order.update({ stripeSessionId: refCommand });
-          return res.json({ url: result.url });
+        let result = null;
+        if (effectiveMoyen === "orange") {
+          result = await createOrangePayment({
+            amount,
+            customerNumber,
+            description,
+            successUrl,
+            cancelUrl,
+            apiKey
+          });
         } else {
-          console.error("PayTech Error:", result.error);
-          return res.status(400).json({ message: "Erreur PayTech: " + result.error });
+          // Wave par défaut
+          result = await createWavePayment({
+            amount,
+            customerNumber,
+            description,
+            successUrl,
+            cancelUrl,
+            apiKey
+          });
+        }
+
+        if (result && result.success && result.data) {
+          const paymentUrl = result.data.payment_url || result.data.deep_links?.MAXIT || result.data.deep_links?.OM;
+          const reference = result.data.reference || `TXN-${order.id}-${Date.now()}`;
+
+          // Sauvegarde de la référence unique UnitechPay pour réconciliation webhook
+          await order.update({ stripeSessionId: reference });
+          return res.json({ url: paymentUrl, reference });
+        } else {
+          console.error("❌ UnitechPay Error:", result);
+          return res.status(400).json({ message: "Erreur UnitechPay: " + (result?.message || "Impossible de générer le lien de paiement.") });
         }
       } catch (err) {
-        console.error("PayTech Error:", err);
-        return res.status(500).json({ message: "Erreur lors de la création du lien PayTech." });
+        console.error("❌ UnitechPay Exception:", err);
+        return res.status(500).json({ message: "Erreur lors de la création du paiement UnitechPay: " + err.message });
       }
     }
 
@@ -750,62 +718,54 @@ router.post("/:slug/create-recharge-session", loadBoutique, authenticate, async 
       return res.json({ orderId: order.id, order });
     }
 
-    // ── PayTech : Wave & Orange Money (Recharge Mobile) ──────────────────────
-    if (moyenPaiement === "wave" || moyenPaiement === "orange" || moyenPaiement === "paytech") {
+    // ── UnitechPay : Wave & Orange Money (Recharge Mobile) ─────────────────
+    if (moyenPaiement === "wave" || moyenPaiement === "orange" || moyenPaiement === "unitechpay" || moyenPaiement === "paytech") {
       try {
-        const { apiKey, apiSecret, env } = getPaytechKeys(req.boutique);
-
-        if (!apiKey || !apiSecret) {
-          return res.status(400).json({ message: "Les clés PayTech ne sont pas configurées. Veuillez contacter l'administrateur." });
+        const apiKey = getUnitechApiKey(req.boutique);
+        if (!apiKey) {
+          return res.status(400).json({ message: "La clé UnitechPay (UNITECH_API_KEY) n'est pas configurée. Veuillez contacter l'administrateur." });
         }
 
-        const refCommand = `RECHARGE-${order.id}-${Date.now()}`;
+        const frontUrl = process.env.FRONTEND_URL || (originUrl.includes("localhost") ? "https://electro.vercel.app" : originUrl);
+        const successUrl = `${frontUrl}/recharge-mobile?status=success&phone=${encodeURIComponent(cleanPhone.replace(/^269/, ""))}&order_id=${order.id}`;
+        const cancelUrl = `${frontUrl}/recharge-mobile?status=canceled`;
+        const description = `Recharge Crédit Mobile ${operatorName || "Comores"} (+${cleanPhone})`;
+        const amountXof = Math.round(Number(amountEur) * 655);
 
-        // custom_field : métadonnées pour l'IPN
-        const customField = JSON.stringify({
-          boutiqueId: req.boutique.id,
-          userId: req.user ? req.user.id : null,
-          orderId: order.id,
-          type: "recharge_mobile",
-          phone: `+${cleanPhone}`,
-          operatorName: operatorName || ""
-        });
-
-        const backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 4000}`;
-        // Pour PayTech, utiliser FRONTEND_URL depuis l'env (ne jamais utiliser localhost car PayTech le rejette)
-        const paytechFrontUrl = process.env.FRONTEND_URL || (originUrl.includes("localhost") ? "https://comoresbiachara.site" : originUrl);
-
-        const payload = {
-          item_name: `Recharge Crédit Mobile ${operatorName || "Comores"} (+${cleanPhone})`,
-          item_price: Math.round(Number(amountEur) * 655), // Conversion EUR → XOF (1 EUR ≈ 655 XOF)
-          currency: "XOF",
-          ref_command: refCommand,
-          command_name: `Recharge mobile ${cleanPhone} via ${req.boutique.nom}`,
-          env: env,
-          ipn_url: `${backendUrl}/api/webhooks/paytech`,
-          success_url: `${paytechFrontUrl}/recharge-mobile?status=success&phone=${encodeURIComponent(cleanPhone.replace(/^269/, ""))}&order_id=${order.id}`,
-          cancel_url: `${paytechFrontUrl}/recharge-mobile?status=canceled`,
-          custom_field: customField
-        };
-
-        // Cibler le moyen de paiement Wave ou Orange Money
-        // Valeurs exactes acceptées par PayTech :
-        // Wave, Wave CI, Orange Money, Orange Money CI, Orange Money ML, etc.
-        if (moyenPaiement === "wave") payload.target_payment = "Wave";
-        if (moyenPaiement === "orange") payload.target_payment = "Orange Money";
-
-        const result = await createPaytechPaymentLink({ apiKey, apiSecret, payload });
-
-        if (result.success) {
-          await order.update({ stripeSessionId: refCommand });
-          return res.json({ url: result.url });
+        let result = null;
+        if (moyenPaiement === "orange") {
+          result = await createOrangePayment({
+            amount: amountXof,
+            customerNumber: cleanPhone,
+            description,
+            successUrl,
+            cancelUrl,
+            apiKey
+          });
         } else {
-          console.error("PayTech Recharge Error:", result.error);
-          return res.status(400).json({ message: "Erreur PayTech: " + result.error });
+          result = await createWavePayment({
+            amount: amountXof,
+            customerNumber: cleanPhone,
+            description,
+            successUrl,
+            cancelUrl,
+            apiKey
+          });
+        }
+
+        if (result && result.success && result.data) {
+          const paymentUrl = result.data.payment_url || result.data.deep_links?.MAXIT || result.data.deep_links?.OM;
+          const reference = result.data.reference || `RECHARGE-${order.id}-${Date.now()}`;
+
+          await order.update({ stripeSessionId: reference });
+          return res.json({ url: paymentUrl, reference });
+        } else {
+          console.error("❌ UnitechPay Recharge Error:", result);
+          return res.status(400).json({ message: "Erreur UnitechPay: " + (result?.message || "Impossible de générer le lien de recharge.") });
         }
       } catch (err) {
-        console.error("PayTech Recharge Error:", err);
-        return res.status(500).json({ message: "Erreur lors de la création du lien de paiement PayTech." });
+        console.error("❌ UnitechPay Recharge Error:", err);
+        return res.status(500).json({ message: "Erreur lors de la création du lien de paiement UnitechPay." });
       }
     }
 

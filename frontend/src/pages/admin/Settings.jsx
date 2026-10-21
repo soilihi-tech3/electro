@@ -219,7 +219,7 @@ export default function AdminSettings({ defaultTab = "general" }) {
             marginBottom: -2, display: "flex", alignItems: "center", gap: 8
           }}
         >
-          <CreditCard size={17} /> Paiement, Stripe & PayTech
+          <CreditCard size={17} /> Paiement, Stripe & UnitechPay
         </button>
 
         <button
@@ -635,8 +635,8 @@ export default function AdminSettings({ defaultTab = "general" }) {
               { key: "mvola", label: "Mvola", sub: "Paiement mobile Money Mvola", Icon: Smartphone },
               { key: "holam", label: "Wero", sub: "Paiement instantané européen Wero", Icon: Smartphone },
               { key: "carte", label: "Carte Bancaire (Stripe)", sub: "Paiement en ligne Visa / Mastercard", Icon: CreditCard },
-              { key: "wave", label: "Wave", sub: "Paiement mobile Wave via PayTech — Afrique de l'Ouest", Icon: Smartphone },
-              { key: "orange", label: "Orange Money", sub: "Paiement mobile Orange via PayTech — Afrique de l'Ouest", Icon: Smartphone },
+              { key: "wave", label: "Wave", sub: "Paiement mobile Wave via UnitechPay — Sénégal & Afrique", Icon: Smartphone },
+              { key: "orange", label: "Orange Money", sub: "Paiement mobile Orange via UnitechPay — Sénégal & Afrique", Icon: Smartphone },
             ].map((item) => {
               const isEnabled = !!modesPaiement[item.key];
               return (
@@ -737,71 +737,58 @@ export default function AdminSettings({ defaultTab = "general" }) {
             </div>
           )}
 
-          {/* PAYTECH CREDENTIALS SECTION (Wave & Orange Money) */}
+          {/* UNITECHPAY CREDENTIALS SECTION (Wave & Orange Money) */}
           {(modesPaiement.wave || modesPaiement.orange) && (
-            <div style={{ background: "#F0FFF4", border: "1.5px solid #0EA5E9", borderRadius: 16, padding: 22, marginTop: 20 }}>
-              <h4 style={{ margin: "0 0 8px", fontSize: 16, color: "#0369A1", display: "flex", alignItems: "center", gap: 8 }}>
-                Clés API PayTech — Wave & Orange Money
+            <div style={{ background: "#F0FDF4", border: "1.5px solid #22C55E", borderRadius: 16, padding: 22, marginTop: 20 }}>
+              <h4 style={{ margin: "0 0 8px", fontSize: 16, color: "#15803D", display: "flex", alignItems: "center", gap: 8 }}>
+                Clé API UnitechPay — Wave & Orange Money
               </h4>
               <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--muted)" }}>
-                Ces clés sont configurées dans le fichier <code>.env</code> de votre backend. Récupérez-les depuis votre tableau de bord PayTech.
+                Cette clé permet d'encaisser directement les paiements Wave et Orange Money sans redirection complexe.
               </p>
 
-              {/* Lien vers le tableau de bord PayTech */}
+              {/* Guide UnitechPay */}
               <div style={{ background: "#EBF8FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 16, display: "flex", alignItems: "center", gap: 10 }}>
                 <Key size={18} color="#0369A1" />
                 <div>
-                  <strong>Comment obtenir vos clés PayTech :</strong><br />
-                  <span style={{ color: "#0369A1" }}>1. Connectez-vous sur <a href="https://paytech.sn" target="_blank" rel="noopener noreferrer" style={{ color: "#0EA5E9", fontWeight: 700 }}>paytech.sn</a></span><br />
-                  <span>2. Allez dans <strong>Paramètres → API & APN</strong></span><br />
-                  <span>3. Copiez vos <strong>Clé API</strong> et <strong>Clé Secrète</strong></span>
+                  <strong>Comment obtenir votre clé UnitechPay :</strong><br />
+                  <span style={{ color: "#0369A1" }}>1. Connectez-vous sur <a href="https://pay.unitech.sn" target="_blank" rel="noopener noreferrer" style={{ color: "#0EA5E9", fontWeight: 700 }}>pay.unitech.sn</a></span><br />
+                  <span>2. Allez dans <strong>Paramètres → Clé API</strong></span><br />
+                  <span>3. Copiez votre <strong>Clé API</strong> et collez-la ci-dessous ou dans votre <code>.env</code>.</span>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
                 <div className="bs-field">
-                  <label style={{ color: "var(--ink)", fontWeight: 600 }}>Clé API PayTech</label>
+                  <label style={{ color: "var(--ink)", fontWeight: 600 }}>Clé API UnitechPay</label>
                   <input
                     className="bs-input"
                     style={{ fontFamily: "monospace", fontSize: 13.5, background: "#f8fafc" }}
-                    value={boutique.paytechApiKey || ""}
-                    onChange={(e) => set("paytechApiKey", e.target.value)}
-                    placeholder="Votre clé API PayTech"
-                  />
-                </div>
-                <div className="bs-field">
-                  <label style={{ color: "var(--ink)", fontWeight: 600 }}>Clé Secrète PayTech</label>
-                  <input
-                    className="bs-input"
-                    type="password"
-                    style={{ fontFamily: "monospace", fontSize: 13.5, background: "#f8fafc" }}
-                    value={boutique.paytechApiSecret || ""}
-                    onChange={(e) => set("paytechApiSecret", e.target.value)}
-                    placeholder="Votre clé secrète PayTech"
+                    value={boutique.unitechApiKey || ""}
+                    onChange={(e) => set("unitechApiKey", e.target.value)}
+                    placeholder="Ex: eb347b5f5b68382b58d3f0babd3687e0186026209ef..."
                   />
                 </div>
               </div>
 
-              {/* URL IPN à configurer dans PayTech */}
+              {/* URL Webhook à configurer dans UnitechPay */}
               <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 10, padding: "12px 16px", marginTop: 14, fontSize: 13 }}>
                 <div style={{ fontWeight: 700, color: "#C2410C", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                  À configurer dans votre tableau de bord PayTech :
+                  À configurer dans votre tableau de bord UnitechPay (Paramètres → Webhooks) :
                 </div>
                 <div style={{ color: "#92400E", lineHeight: 1.6 }}>
-                  Allez dans <strong>Paramètres → API & APN → URL de Notification Instantanée (IPN)</strong><br />
-                  Saisissez l'URL suivante :<br />
+                  Saisissez l'URL de Webhook suivante :<br />
                   <code style={{ background: "#FEF3C7", padding: "4px 8px", borderRadius: 6, display: "inline-block", marginTop: 6, fontWeight: 700, color: "#92400E", fontSize: 12 }}>
-                    https://comoresbiachara.onrender.com/api/webhooks/paytech
-                  </code>
+                    https://electro-backend.onrender.com/api/webhooks/unitechpay
+                  </code><br />
+                  <span>Cochez les événements : <strong>Paiement réussi</strong>, <strong>Paiement échoué</strong>, <strong>Paiement expiré</strong>.</span>
                 </div>
               </div>
 
               <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.5 }}>
-                <strong>Note :</strong> Les clés PayTech peuvent aussi être configurées directement dans le fichier <code>.env</code> du backend :
+                <strong>Note :</strong> La clé UnitechPay est également configurée globalement dans le fichier <code>.env</code> du backend :
                 <code style={{ display: "block", background: "#f1f5f9", padding: "8px 12px", borderRadius: 8, marginTop: 6, fontSize: 12 }}>
-                  PAYTECH_API_KEY=votre_cle<br />
-                  PAYTECH_API_SECRET=votre_secret<br />
-                  PAYTECH_ENV=test  # ou prod
+                  UNITECH_API_KEY=eb347b5f5b68382b58d3f0babd3687e0186026209ef62357d341fef9bccd4fd3
                 </code>
               </div>
             </div>

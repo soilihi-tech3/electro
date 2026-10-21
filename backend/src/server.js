@@ -29,9 +29,11 @@ app.set("trust proxy", 1);
 const stripeWebhookRoutes = require("./routes/stripe.webhook");
 app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }), stripeWebhookRoutes);
 
-// Webhook PayTech — IPN pour Wave & Orange Money (PayTech envoie du JSON, pas besoin de raw body)
-const paytechWebhookRoutes = require("./routes/paytech.webhook");
-app.use("/api/webhooks/paytech", paytechWebhookRoutes);
+// Webhook UnitechPay — Wave & Orange Money (https://pay.unitech.sn/documentation/)
+const unitechpayWebhookRoutes = require("./routes/unitechpay.webhook");
+app.use("/api/webhooks/unitechpay", express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }), unitechpayWebhookRoutes);
+// Alias pour transition
+app.use("/api/webhooks/paytech", express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }), unitechpayWebhookRoutes);
 
 // High Performance Compression (GZIP/Brotli)
 app.use(compression());

@@ -512,21 +512,21 @@ export default function RechargeMobile() {
               4. Choisissez votre moyen de paiement :
             </label>
 
-            {/* Alerte informative PayTech */}
+            {/* Alerte informative UnitechPay */}
             <div style={{
-              background: "#F0FFF4", border: "1px solid #BBF7D0", borderRadius: 10,
+              background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10,
               padding: "10px 14px", marginBottom: 12, fontSize: 12.5, color: "#166534",
               display: "flex", alignItems: "flex-start", gap: 8
             }}>
               <span style={{ fontSize: 13, flexShrink: 0, fontWeight: 700 }}>Paiement :</span>
               <span>
-                <strong>Paiement sécurisé via PayTech</strong> — Wave et Orange Money sont traités par PayTech, une passerelle de paiement certifiée pour l'Afrique de l'Ouest.
+                <strong>Paiement sécurisé via UnitechPay</strong> — Wave et Orange Money sont traités par UnitechPay, passerelle de paiement certifiée.
               </span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
 
-              {/* WAVE — PayTech */}
+              {/* WAVE — UnitechPay */}
               {waveAvailable && (
                 <div
                   onClick={() => setMoyenPaiement("wave")}
@@ -544,7 +544,7 @@ export default function RechargeMobile() {
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8 }}>
                           <Smartphone size={16} color="#0EA5E9" /> Wave
-                          <span style={{ fontSize: 10, background: "#0EA5E9", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>PAYTECH</span>
+                          <span style={{ fontSize: 10, background: "#0EA5E9", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>UNITECHPAY</span>
                         </div>
                         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile instantané — Sénégal & Comores</div>
                       </div>
@@ -554,7 +554,7 @@ export default function RechargeMobile() {
                 </div>
               )}
 
-              {/* ORANGE MONEY — PayTech */}
+              {/* ORANGE MONEY — UnitechPay */}
               {orangeAvailable && (
                 <div
                   onClick={() => setMoyenPaiement("orange")}
@@ -572,7 +572,7 @@ export default function RechargeMobile() {
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8 }}>
                           <Smartphone size={16} color="#F97316" /> Orange Money
-                          <span style={{ fontSize: 10, background: "#F97316", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>PAYTECH</span>
+                          <span style={{ fontSize: 10, background: "#F97316", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>UNITECHPAY</span>
                         </div>
                         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile Orange — Sénégal & Afrique de l'Ouest</div>
                       </div>

@@ -62,9 +62,11 @@ const Boutique = sequelize.define("Boutique", {
   paydunyaMasterKey: { type: DataTypes.STRING(255), allowNull: true },
   paydunyaPrivateKey: { type: DataTypes.STRING(255), allowNull: true },
   paydunyaToken: { type: DataTypes.STRING(255), allowNull: true },
-  // PayTech — Wave & Orange Money
+  // PayTech — Wave & Orange Money (ancien)
   paytechApiKey:    { type: DataTypes.STRING(255), allowNull: true, field: "paytech_api_key" },
-  paytechApiSecret: { type: DataTypes.STRING(255), allowNull: true, field: "paytech_api_secret" }
+  paytechApiSecret: { type: DataTypes.STRING(255), allowNull: true, field: "paytech_api_secret" },
+  // UnitechPay — Wave & Orange Money (nouveau)
+  unitechApiKey:    { type: DataTypes.STRING(255), allowNull: true, field: "unitech_api_key" }
 }, { tableName: "boutiques" });
 
 module.exports = Boutique;
