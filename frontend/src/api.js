@@ -4,24 +4,22 @@ import { saveCache, getCache, enqueueAction } from "./utils/offlineStorage";
 const getBaseUrl = () => {
   let url = import.meta.env.VITE_API_URL;
   
-  if (typeof window !== "undefined") {
-    if (!url || url === "/" || url === "/api") {
-      return "/api";
-    }
-    if (url.startsWith("/")) {
-      return url.endsWith("/api") ? url : `${url}/api`.replace(/\/+/g, "/");
-    }
+  const isBrowser = typeof window !== "undefined";
+  const hostname = isBrowser && window.location.hostname ? window.location.hostname : "localhost";
+  const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+
+  if (isLocal) {
+    return url || `http://${hostname}:4000/api`;
   }
 
-  if (!url) {
-    const host = typeof window !== "undefined" && window.location.hostname ? window.location.hostname : "localhost";
-    url = `http://${host}:4000/api`;
+  // En production (Vercel ou domaine personnalisé), toujours cibler le backend Render
+  const productionApi = "https://electro-backend-8hfq.onrender.com/api";
+  if (!url || url === "/" || url === "/api") {
+    return productionApi;
   }
+  
   url = url.trim().replace(/\/+$/, "");
-  if (!url.endsWith("/api")) {
-    url += "/api";
-  }
-  return url;
+  return url.endsWith("/api") ? url : `${url}/api`;
 };
 
 export const SLUG = import.meta.env.VITE_BOUTIQUE_SLUG || "electro-pro";
