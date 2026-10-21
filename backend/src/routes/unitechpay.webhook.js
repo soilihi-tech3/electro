@@ -114,8 +114,11 @@ router.post("/", async (req, res) => {
       ? "orange"
       : "unitechpay";
 
+    const isRecharge = order.typeVente === "recharge_mobile" || (order.notes && order.notes.includes("Recharge"));
+    const nextStatut = isRecharge ? "recuperee" : "en_attente";
+
     await order.update({
-      statut: "en_attente",
+      statut: nextStatut,
       statutPaiement: "paye",
       moyenPaiement: effectiveMethod,
       stripeSessionId: reference || order.stripeSessionId
@@ -125,26 +128,46 @@ router.post("/", async (req, res) => {
     const boutiqueObj = await Boutique.findByPk(order.boutiqueId);
 
     // Notifications
-    Notification.create({
-      userId: order.clientId,
-      boutiqueId: order.boutiqueId,
-      orderId: order.id,
-      title: "Paiement validé",
-      message: `Le paiement de votre commande #${cmdNum} via ${paymentMethod} a été validé avec succès.`,
-      type: "order"
-    }).catch(() => {});
+    if (isRecharge) {
+      Notification.create({
+        userId: order.clientId,
+        boutiqueId: order.boutiqueId,
+        orderId: order.id,
+        title: "Recharge crédit envoyée ! 📲",
+        message: `Votre recharge de crédit mobile via ${paymentMethod} a été validée et transférée avec succès (#${cmdNum}).`,
+        type: "order"
+      }).catch(() => {});
 
-    Notification.create({
-      userId: null,
-      boutiqueId: order.boutiqueId,
-      orderId: order.id,
-      title: `Paiement ${paymentMethod} reçu`,
-      message: `Paiement UnitechPay confirmé pour la commande #${cmdNum} (${body.amount || order.total} XOF).`,
-      type: "order"
-    }).catch(() => {});
+      Notification.create({
+        userId: null,
+        boutiqueId: order.boutiqueId,
+        orderId: order.id,
+        title: `Nouvelle Recharge Crédit Mobile (${paymentMethod})`,
+        message: `Paiement ${paymentMethod} confirmé pour la recharge #${cmdNum} (${body.amount || order.total} XOF).`,
+        type: "order"
+      }).catch(() => {});
+    } else {
+      Notification.create({
+        userId: order.clientId,
+        boutiqueId: order.boutiqueId,
+        orderId: order.id,
+        title: "Paiement validé",
+        message: `Le paiement de votre commande #${cmdNum} via ${paymentMethod} a été validé avec succès.`,
+        type: "order"
+      }).catch(() => {});
 
-    // Déstockage si articles présents
-    if (order.items && order.items.length > 0) {
+      Notification.create({
+        userId: null,
+        boutiqueId: order.boutiqueId,
+        orderId: order.id,
+        title: `Paiement ${paymentMethod} reçu`,
+        message: `Paiement UnitechPay confirmé pour la commande #${cmdNum} (${body.amount || order.total} XOF).`,
+        type: "order"
+      }).catch(() => {});
+    }
+
+    // Déstockage si articles physiques présents (hors recharge)
+    if (!isRecharge && order.items && order.items.length > 0) {
       for (const item of order.items) {
         if (item.product && item.product.stock !== null && item.product.stock !== undefined) {
           const newStock = Math.max(0, item.product.stock - item.quantite);
@@ -156,7 +179,7 @@ router.post("/", async (req, res) => {
     clearCachePattern("/api/store").catch(() => {});
     broadcast("order_updated", {
       orderId: order.id,
-      statut: "en_attente",
+      statut: nextStatut,
       clientId: order.clientId,
       boutiqueId: order.boutiqueId
     });

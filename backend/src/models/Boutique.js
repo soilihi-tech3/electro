@@ -39,7 +39,8 @@ const Boutique = sequelize.define("Boutique", {
       unites: true,
       homeBanners: true,
       sideBanners: true,
-      commandes: true
+      commandes: true,
+      rechargeCredit: true
     }
   },
   modesPaiement: {

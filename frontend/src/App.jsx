@@ -23,6 +23,7 @@ import Login from "./pages/store/Login.jsx";
 import Register from "./pages/store/Register.jsx";
 import About from "./pages/store/About.jsx";
 import Profile from "./pages/store/Profile.jsx";
+import RechargeMobile from "./pages/store/RechargeMobile.jsx";
 
 const AdminLayout = React.lazy(() => import("./pages/admin/AdminLayout.jsx"));
 const Dashboard = React.lazy(() => import("./pages/admin/Dashboard.jsx"));
@@ -141,6 +142,8 @@ export default function App() {
         <Route path="/mes-commandes" element={
           <ProtectedRoute roles={["client"]}><WideLayout><MyOrders /></WideLayout></ProtectedRoute>
         } />
+        <Route path="/recharge-credit" element={<StoreLayout><RechargeMobile /></StoreLayout>} />
+        <Route path="/recharge-mobile" element={<StoreLayout><RechargeMobile /></StoreLayout>} />
 
         {/* --- Back-office Admin / Employé --- */}
         <Route path="/admin" element={

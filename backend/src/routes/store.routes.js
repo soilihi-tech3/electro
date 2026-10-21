@@ -694,12 +694,23 @@ router.post("/:slug/create-recharge-session", loadBoutique, authenticate, async 
       return res.status(400).json({ message: "Numéro invalide. Format attendu: 7 chiffres aux Comores (ex: +2693326532)." });
     }
 
-    const stripeSecretKey = getStripeSecretKey(req.boutique);
-    if (!stripeSecretKey || (!stripeSecretKey.startsWith("sk_") && !stripeSecretKey.startsWith("rk_"))) {
-      return res.status(400).json({ message: "La boutique n'a pas configuré son paiement Stripe." });
+    // Vérifier si le module rechargeCredit est activé
+    if (req.boutique.modulesActifs && req.boutique.modulesActifs.rechargeCredit === false) {
+      return res.status(403).json({ message: "Le service de recharge de crédit mobile est actuellement désactivé pour cette boutique." });
     }
 
-    const stripe = require("stripe")(stripeSecretKey);
+    // Vérifier la disponibilité du mode de paiement sélectionné
+    const boutiqueModes = req.boutique.modesPaiement || {};
+    if (moyenPaiement === "wave" && boutiqueModes.wave === false) {
+      return res.status(400).json({ message: "Le paiement par Wave est temporairement indisponible." });
+    }
+    if (moyenPaiement === "orange" && boutiqueModes.orange === false) {
+      return res.status(400).json({ message: "Le paiement par Orange Money est temporairement indisponible." });
+    }
+    if (moyenPaiement === "carte" && boutiqueModes.carte === false) {
+      return res.status(400).json({ message: "Le paiement par Carte bancaire est temporairement indisponible." });
+    }
+
     const originUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
 
     const order = await Order.create({
@@ -768,6 +779,12 @@ router.post("/:slug/create-recharge-session", loadBoutique, authenticate, async 
         return res.status(500).json({ message: "Erreur lors de la création du lien de paiement UnitechPay." });
       }
     }
+
+    const stripeSecretKey = getStripeSecretKey(req.boutique);
+    if (!stripeSecretKey || (!stripeSecretKey.startsWith("sk_") && !stripeSecretKey.startsWith("rk_"))) {
+      return res.status(400).json({ message: "La boutique n'a pas configuré son paiement Stripe." });
+    }
+    const stripe = require("stripe")(stripeSecretKey);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],

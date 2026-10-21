@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ShoppingCart, Search, User, LogOut, Store, X, Home, Grid, Package, Shield, Menu, ChevronDown, Info, Heart, Sun, Moon, Smartphone, MoreHorizontal } from "lucide-react";
+import { ShoppingCart, Search, User, LogOut, Store, X, Home, Grid, Package, Shield, Menu, ChevronDown, Info, Heart, Sun, Moon, Smartphone, MoreHorizontal, Zap } from "lucide-react";
 
 import { useCart } from "../context/CartContext.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -517,6 +517,12 @@ export default function Header({ setCartOpen: setCartOpenProp }) {
             <Link to="/catalogue?favoris=1" style={{ fontSize: 14.5, fontWeight: 700, color: location.search.includes("favoris=1") ? "#B4483A" : "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s ease", whiteSpace: "nowrap" }}>
               <Heart size={16} color="#B4483A" fill={location.search.includes("favoris=1") ? "#B4483A" : "none"} /> Favoris
             </Link>
+            {boutique?.modulesActifs?.rechargeCredit !== false && (
+              <Link to="/recharge-credit" style={{ fontSize: 14.5, fontWeight: 700, color: location.pathname.includes("recharge") ? "var(--forest)" : "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s ease", whiteSpace: "nowrap" }}>
+                <Zap size={16} color="#0284C7" fill="#0284C7" /> Recharge Crédit
+                <span style={{ fontSize: 10, background: "#0284C7", color: "#fff", padding: "1px 6px", borderRadius: 8, fontWeight: 800 }}>Direct</span>
+              </Link>
+            )}
             {user?.role === "client" && (
               <Link to="/mes-commandes" style={{ fontSize: 14.5, fontWeight: 700, color: location.pathname === "/mes-commandes" ? "var(--forest)" : "var(--ink)", textDecoration: "none", display: "flex", alignItems: "center", gap: 6, transition: "color 0.2s ease", whiteSpace: "nowrap" }}>
                 <Package size={16} /> Mes commandes
@@ -694,6 +700,23 @@ export default function Header({ setCartOpen: setCartOpenProp }) {
                 <Heart size={18} color="#B4483A" fill="#B4483A" />
                 <span style={{ flex: 1 }}>Favoris</span>
               </Link>
+
+              {boutique?.modulesActifs?.rechargeCredit !== false && (
+                <Link 
+                  to="/recharge-credit" 
+                  onClick={() => setMobileMoreOpen(false)} 
+                  style={{ 
+                    display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", 
+                    textDecoration: "none", color: "var(--ink)", fontWeight: 700, fontSize: 14,
+                    borderBottom: "1px solid var(--line)", background: "#fff",
+                    transition: "background 0.15s"
+                  }}
+                >
+                  <Zap size={18} color="#0284C7" fill="#0284C7" />
+                  <span style={{ flex: 1 }}>Recharge Crédit</span>
+                  <span style={{ fontSize: 10, background: "#0284C7", color: "#fff", padding: "1px 6px", borderRadius: 8, fontWeight: 800 }}>Direct</span>
+                </Link>
+              )}
 
               <Link 
                 to="/a-propos" 

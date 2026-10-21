@@ -442,7 +442,8 @@ export default function Checkout() {
                       borderRadius: 14,
                       border: `2px solid ${isSelected ? "var(--forest)" : "var(--line)"}`,
                       background: isSelected ? "var(--forest-light)" : m.available ? "var(--card)" : "var(--paper)",
-                      cursor: "pointer",
+                      cursor: m.available ? "pointer" : "not-allowed",
+                      opacity: m.available ? 1 : 0.62,
                       transition: "all 0.2s",
                       position: "relative"
                     }}
@@ -458,16 +459,16 @@ export default function Checkout() {
                       justifyContent: "center",
                       flexShrink: 0
                     }}>
-                      {m.renderLogo ? m.renderLogo() : <m.Icon size={20} color="var(--forest)" />}
+                      {m.renderLogo ? m.renderLogo() : <m.Icon size={20} color={m.available ? "var(--forest)" : "var(--muted)"} />}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: isSelected ? "var(--forest-dark)" : "var(--ink)" }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: isSelected ? "var(--forest-dark)" : m.available ? "var(--ink)" : "var(--muted)" }}>
                           {m.label}
                         </span>
                         {!m.available && (
-                          <span style={{ fontSize: 10, fontWeight: 700, background: "var(--line)", color: "var(--muted)", padding: "2px 6px", borderRadius: 10 }}>
-                            Bientôt
+                          <span style={{ fontSize: 10, fontWeight: 700, background: "var(--line)", color: "var(--muted)", padding: "2px 8px", borderRadius: 8 }}>
+                            Bientôt disponible
                           </span>
                         )}
                       </div>

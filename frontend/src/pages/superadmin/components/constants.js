@@ -14,10 +14,12 @@ export const DEFAULT_MODULES = {
   produits: true,
   employes: true,
   parametres: true,
-  commanderWhatsapp: true
+  commanderWhatsapp: true,
+  rechargeCredit: true
 };
 
 export const MODULE_LABELS = [
+  { key: "rechargeCredit", label: "Recharge Crédit Mobile", desc: "Permet aux clients d'acheter et d'envoyer du crédit mobile en temps réel par Carte, Wave et Orange Money" },
   { key: "vente", label: "Vente Directe (POS Caisse)", desc: "Gestion des ventes comptoir et encaissement direct" },
   { key: "ventesHistorique", label: "Historique des Ventes", desc: "Consultation du journal des ventes et reçus" },
   { key: "achats", label: "Achats & Stocks", desc: "Approvisionnements, entrées de stock et coût d'achat" },

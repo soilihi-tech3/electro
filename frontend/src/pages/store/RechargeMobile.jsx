@@ -86,10 +86,25 @@ export default function RechargeMobile() {
   const carteAvailable = !!modesPaiement.carte;
   const waveAvailable = !!modesPaiement.wave;
   const orangeAvailable = !!modesPaiement.orange;
+  const isModuleActive = boutique?.modulesActifs?.rechargeCredit !== false;
 
-  // Sélection du moyen de paiement par défaut : wave > carte > wero
-  const defaultPayment = waveAvailable ? "wave" : carteAvailable ? "carte" : "wero";
+  // Sélection du moyen de paiement par défaut
+  const defaultPayment = waveAvailable ? "wave" : orangeAvailable ? "orange" : carteAvailable ? "carte" : "wero";
   const [moyenPaiement, setMoyenPaiement] = useState(defaultPayment);
+
+  useEffect(() => {
+    const isCurrentValid =
+      (moyenPaiement === "wave" && waveAvailable) ||
+      (moyenPaiement === "orange" && orangeAvailable) ||
+      (moyenPaiement === "carte" && carteAvailable) ||
+      (moyenPaiement === "wero" && weroAvailable);
+    if (!isCurrentValid) {
+      if (waveAvailable) setMoyenPaiement("wave");
+      else if (orangeAvailable) setMoyenPaiement("orange");
+      else if (carteAvailable) setMoyenPaiement("carte");
+      else if (weroAvailable) setMoyenPaiement("wero");
+    }
+  }, [waveAvailable, orangeAvailable, carteAvailable, weroAvailable, moyenPaiement]);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentModalData, setPaymentModalData] = useState(null);
@@ -177,6 +192,30 @@ export default function RechargeMobile() {
   const handleProceed = async (e) => {
     e.preventDefault();
     setErrorMsg("");
+
+    if (!isModuleActive) {
+      const msg = "Le service de recharge de crédit mobile est actuellement désactivé pour cette boutique.";
+      setErrorMsg(msg);
+      showToast(msg, "error");
+      return;
+    }
+
+    if (moyenPaiement === "wave" && !waveAvailable) {
+      showToast("Le paiement par Wave est temporairement désactivé.", "error");
+      return;
+    }
+    if (moyenPaiement === "orange" && !orangeAvailable) {
+      showToast("Le paiement par Orange Money est temporairement désactivé.", "error");
+      return;
+    }
+    if (moyenPaiement === "carte" && !carteAvailable) {
+      showToast("Le paiement par Carte bancaire est temporairement désactivé.", "error");
+      return;
+    }
+    if (moyenPaiement === "wero" && !weroAvailable) {
+      showToast("Le paiement par Wero est temporairement désactivé.", "error");
+      return;
+    }
 
     if (!user) {
       showToast("Veuillez vous connecter pour recharger du crédit.", "info");
@@ -316,6 +355,22 @@ export default function RechargeMobile() {
           margin: "0 24px 20px", display: "flex", alignItems: "center", gap: 10
         }}>
           <AlertCircle size={18} /> {errorMsg}
+        </div>
+      )}
+
+      {/* Alerte si module désactivé par SuperAdmin ou boutique */}
+      {!isModuleActive && (
+        <div style={{
+          background: "#FEF2F2", border: "1.5px solid #FCA5A5", color: "#991B1B",
+          padding: "16px 20px", borderRadius: 16, fontWeight: 700, fontSize: 14.5,
+          margin: "0 auto 24px", maxWidth: 980, width: "calc(100% - 48px)",
+          display: "flex", alignItems: "center", gap: 12,
+          boxShadow: "0 2px 8px rgba(239, 68, 68, 0.08)"
+        }}>
+          <AlertCircle size={22} color="#DC2626" style={{ flexShrink: 0 }} />
+          <div>
+            <strong>Service momentanément indisponible :</strong> La recharge de crédit mobile a été désactivée pour cette boutique par l&apos;administrateur.
+          </div>
         </div>
       )}
 
@@ -466,8 +521,8 @@ export default function RechargeMobile() {
                       </span>
                     )}
                     <div style={{ fontSize: 20, fontWeight: 900 }}>{rec.kmf.toLocaleString("fr-FR")} KMF</div>
-                    <div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 4, fontWeight: 700 }}>
-                      Vous payez : {rec.eur.toFixed(2)} €
+                    <div style={{ fontSize: 13, opacity: 0.95, marginTop: 4, fontWeight: 700 }}>
+                      {rec.eur.toFixed(2)} € <span style={{ opacity: 0.85, fontWeight: 600 }}>({Math.round(rec.eur * 655.957).toLocaleString("fr-FR")} FCFA)</span>
                     </div>
                   </div>
                 );
@@ -475,7 +530,7 @@ export default function RechargeMobile() {
             </div>
           </div>
 
-          {/* BOÎTE DE RÉSUMÉ FINANCIER EN EUROS */}
+          {/* BOÎTE DE RÉSUMÉ FINANCIER EN EUROS & FCFA */}
           <div style={{
             background: "var(--forest-light)",
             border: "1.5px solid var(--forest)",
@@ -490,19 +545,25 @@ export default function RechargeMobile() {
           }}>
             <div>
               <div style={{ fontSize: 11.5, fontWeight: 800, color: "var(--forest)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                Récapitulatif de votre commande
+                Récapitulatif de votre commande en direct
               </div>
               <div style={{ fontSize: 17, fontWeight: 900, color: "var(--forest-dark)", marginTop: 2 }}>
                 {currentSummaryTitle}
               </div>
-              <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
                 Destinataire : <strong>+269 {phone || operator.sampleNumber}</strong> ({operator.name})
+              </div>
+              <div style={{ fontSize: 12, color: "#166534", marginTop: 4, fontWeight: 600 }}>
+                ⚡ Crédit envoyé instantanément au destinataire dès validation du paiement.
               </div>
             </div>
 
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>Montant total en Euro</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Montant à payer</div>
               <div style={{ fontSize: 24, fontWeight: 900, color: "var(--forest-dark)" }}>{currentTotalEur.toFixed(2)} €</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--forest)" }}>
+                ≈ {Math.round(currentTotalEur * 655.957).toLocaleString("fr-FR")} FCFA
+              </div>
             </div>
           </div>
 
@@ -527,117 +588,166 @@ export default function RechargeMobile() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
 
               {/* WAVE — UnitechPay */}
-              {waveAvailable && (
-                <div
-                  onClick={() => setMoyenPaiement("wave")}
-                  style={{
-                    background: moyenPaiement === "wave" ? "#EBF8FF" : "var(--paper)",
-                    border: `1.5px solid ${moyenPaiement === "wave" ? "#0EA5E9" : "var(--line)"}`,
-                    borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s ease"
-                  }}
-                >
-                  <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${moyenPaiement === "wave" ? "#0EA5E9" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {moyenPaiement === "wave" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#0EA5E9" }} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8 }}>
-                          <Smartphone size={16} color="#0EA5E9" /> Wave
-                          <span style={{ fontSize: 10, background: "#0EA5E9", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>UNITECHPAY</span>
-                        </div>
-                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile instantané — Sénégal & Comores</div>
+              <div
+                onClick={() => {
+                  if (!waveAvailable) {
+                    showToast("Le paiement par Wave est temporairement indisponible sur cette boutique.", "info");
+                    return;
+                  }
+                  setMoyenPaiement("wave");
+                }}
+                style={{
+                  background: !waveAvailable ? "var(--paper)" : moyenPaiement === "wave" ? "#EBF8FF" : "var(--card)",
+                  border: `1.5px solid ${!waveAvailable ? "var(--line)" : moyenPaiement === "wave" ? "#0EA5E9" : "var(--line)"}`,
+                  opacity: waveAvailable ? 1 : 0.6,
+                  borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16,
+                  cursor: waveAvailable ? "pointer" : "not-allowed", transition: "all 0.15s ease"
+                }}
+              >
+                <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${waveAvailable && moyenPaiement === "wave" ? "#0EA5E9" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {waveAvailable && moyenPaiement === "wave" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#0EA5E9" }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <Smartphone size={16} color={waveAvailable ? "#0EA5E9" : "var(--muted)"} /> Wave
+                        <span style={{ fontSize: 10, background: waveAvailable ? "#0EA5E9" : "var(--muted)", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>UNITECHPAY</span>
+                        {!waveAvailable && (
+                          <span style={{ fontSize: 10, background: "var(--line)", color: "var(--muted)", padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>
+                            Bientôt disponible
+                          </span>
+                        )}
                       </div>
-                      <WaveLogo />
+                      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile instantané — Sénégal & Comores</div>
                     </div>
+                    <WaveLogo />
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* ORANGE MONEY — UnitechPay */}
-              {orangeAvailable && (
-                <div
-                  onClick={() => setMoyenPaiement("orange")}
-                  style={{
-                    background: moyenPaiement === "orange" ? "#FFF7ED" : "var(--paper)",
-                    border: `1.5px solid ${moyenPaiement === "orange" ? "#F97316" : "var(--line)"}`,
-                    borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s ease"
-                  }}
-                >
-                  <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${moyenPaiement === "orange" ? "#F97316" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {moyenPaiement === "orange" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#F97316" }} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8 }}>
-                          <Smartphone size={16} color="#F97316" /> Orange Money
-                          <span style={{ fontSize: 10, background: "#F97316", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>UNITECHPAY</span>
-                        </div>
-                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile Orange — Sénégal & Afrique de l'Ouest</div>
+              <div
+                onClick={() => {
+                  if (!orangeAvailable) {
+                    showToast("Le paiement par Orange Money est temporairement indisponible sur cette boutique.", "info");
+                    return;
+                  }
+                  setMoyenPaiement("orange");
+                }}
+                style={{
+                  background: !orangeAvailable ? "var(--paper)" : moyenPaiement === "orange" ? "#FFF7ED" : "var(--card)",
+                  border: `1.5px solid ${!orangeAvailable ? "var(--line)" : moyenPaiement === "orange" ? "#F97316" : "var(--line)"}`,
+                  opacity: orangeAvailable ? 1 : 0.6,
+                  borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16,
+                  cursor: orangeAvailable ? "pointer" : "not-allowed", transition: "all 0.15s ease"
+                }}
+              >
+                <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${orangeAvailable && moyenPaiement === "orange" ? "#F97316" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {orangeAvailable && moyenPaiement === "orange" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#F97316" }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <Smartphone size={16} color={orangeAvailable ? "#F97316" : "var(--muted)"} /> Orange Money
+                        <span style={{ fontSize: 10, background: orangeAvailable ? "#F97316" : "var(--muted)", color: "#fff", padding: "2px 7px", borderRadius: 8, fontWeight: 700 }}>UNITECHPAY</span>
+                        {!orangeAvailable && (
+                          <span style={{ fontSize: 10, background: "var(--line)", color: "var(--muted)", padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>
+                            Bientôt disponible
+                          </span>
+                        )}
                       </div>
-                      <OrangeMoneyLogo />
+                      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement mobile Orange — Sénégal & Afrique de l'Ouest</div>
                     </div>
+                    <OrangeMoneyLogo />
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* CARTE BANCAIRE — Stripe */}
-              {carteAvailable && (
-                <div
-                  onClick={() => setMoyenPaiement("carte")}
-                  style={{
-                    background: moyenPaiement === "carte" ? "#F0FDF4" : "var(--paper)",
-                    border: `1.5px solid ${moyenPaiement === "carte" ? "var(--forest)" : "var(--line)"}`,
-                    borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s ease"
-                  }}
-                >
-                  <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${moyenPaiement === "carte" ? "var(--forest)" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {moyenPaiement === "carte" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--forest)" }} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)" }}>Carte bancaire (€)</div>
-                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement sécurisé en ligne (Stripe) — en Euros</div>
+              <div
+                onClick={() => {
+                  if (!carteAvailable) {
+                    showToast("Le paiement par Carte bancaire est temporairement indisponible sur cette boutique.", "info");
+                    return;
+                  }
+                  setMoyenPaiement("carte");
+                }}
+                style={{
+                  background: !carteAvailable ? "var(--paper)" : moyenPaiement === "carte" ? "#F0FDF4" : "var(--card)",
+                  border: `1.5px solid ${!carteAvailable ? "var(--line)" : moyenPaiement === "carte" ? "var(--forest)" : "var(--line)"}`,
+                  opacity: carteAvailable ? 1 : 0.6,
+                  borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16,
+                  cursor: carteAvailable ? "pointer" : "not-allowed", transition: "all 0.15s ease"
+                }}
+              >
+                <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${carteAvailable && moyenPaiement === "carte" ? "var(--forest)" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {carteAvailable && moyenPaiement === "carte" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--forest)" }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>Carte bancaire (€)</span>
+                        {!carteAvailable && (
+                          <span style={{ fontSize: 10, background: "var(--line)", color: "var(--muted)", padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>
+                            Bientôt disponible
+                          </span>
+                        )}
                       </div>
-                      <OnlinePaymentBadges />
+                      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement sécurisé en ligne (Stripe) — en Euros</div>
                     </div>
+                    <OnlinePaymentBadges />
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* WERO */}
-              {weroAvailable && (
-                <div
-                  onClick={() => setMoyenPaiement("wero")}
-                  style={{
-                    background: moyenPaiement === "wero" ? "#F0FDF4" : "var(--paper)",
-                    border: `1.5px solid ${moyenPaiement === "wero" ? "var(--forest)" : "var(--line)"}`,
-                    borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "all 0.15s ease"
-                  }}
-                >
-                  <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${moyenPaiement === "wero" ? "var(--forest)" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {moyenPaiement === "wero" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--forest)" }} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)" }}>Wero</div>
-                        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement instantané européen</div>
+              <div
+                onClick={() => {
+                  if (!weroAvailable) {
+                    showToast("Le paiement par Wero est temporairement indisponible sur cette boutique.", "info");
+                    return;
+                  }
+                  setMoyenPaiement("wero");
+                }}
+                style={{
+                  background: !weroAvailable ? "var(--paper)" : moyenPaiement === "wero" ? "#F0FDF4" : "var(--card)",
+                  border: `1.5px solid ${!weroAvailable ? "var(--line)" : moyenPaiement === "wero" ? "var(--forest)" : "var(--line)"}`,
+                  opacity: weroAvailable ? 1 : 0.6,
+                  borderRadius: 12, padding: "16px 20px", display: "flex", alignItems: "center", gap: 16,
+                  cursor: weroAvailable ? "pointer" : "not-allowed", transition: "all 0.15s ease"
+                }}
+              >
+                <div style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", border: `2px solid ${weroAvailable && moyenPaiement === "wero" ? "var(--forest)" : "var(--muted)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {weroAvailable && moyenPaiement === "wero" && <div style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--forest)" }} />}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--forest-dark)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>Wero</span>
+                        {!weroAvailable && (
+                          <span style={{ fontSize: 10, background: "var(--line)", color: "var(--muted)", padding: "2px 8px", borderRadius: 8, fontWeight: 700 }}>
+                            Bientôt disponible
+                          </span>
+                        )}
                       </div>
-                      <WeroLogo height={28} />
+                      <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 4 }}>Paiement instantané européen</div>
                     </div>
+                    <WeroLogo height={28} />
                   </div>
                 </div>
-              )}
+              </div>
+
             </div>
           </div>
 
           {/* SUBMIT BUTTON */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !isModuleActive}
             className="bs-btn-primary"
             style={{
               width: "100%",
@@ -649,21 +759,30 @@ export default function RechargeMobile() {
               justifyContent: "center",
               gap: 10,
               boxShadow: "0 6px 20px rgba(22, 52, 36, 0.2)",
-              background: moyenPaiement === "wave" ? "linear-gradient(135deg, #0369A1, #0EA5E9)" :
+              opacity: !isModuleActive ? 0.6 : 1,
+              cursor: !isModuleActive ? "not-allowed" : "pointer",
+              background: !isModuleActive ? "var(--muted)" :
+                          moyenPaiement === "wave" ? "linear-gradient(135deg, #0369A1, #0EA5E9)" :
                           moyenPaiement === "orange" ? "linear-gradient(135deg, #EA580C, #F97316)" :
                           undefined
             }}
           >
-            {moyenPaiement === "wave" ? <Smartphone size={20} /> :
-             moyenPaiement === "orange" ? <Smartphone size={20} /> :
-             <CreditCard size={20} />}
-            <span>
-              {moyenPaiement === "wave" ? `Payer par Wave (${Math.round(currentTotalEur * 655).toLocaleString("fr-FR")} XOF)` :
-               moyenPaiement === "orange" ? `Payer par Orange Money (${Math.round(currentTotalEur * 655).toLocaleString("fr-FR")} XOF)` :
-               moyenPaiement === "wero" ? `Acheter par Wero (${currentTotalEur.toFixed(2)} €)` :
-               `Acheter par Carte (${currentTotalEur.toFixed(2)} €)`}
-            </span>
-            <ArrowRight size={18} />
+            {!isModuleActive ? (
+              <span>Service désactivé</span>
+            ) : (
+              <>
+                {moyenPaiement === "wave" ? <Smartphone size={20} /> :
+                 moyenPaiement === "orange" ? <Smartphone size={20} /> :
+                 <CreditCard size={20} />}
+                <span>
+                  {moyenPaiement === "wave" ? `Payer par Wave (${Math.round(currentTotalEur * 655.957).toLocaleString("fr-FR")} FCFA)` :
+                   moyenPaiement === "orange" ? `Payer par Orange Money (${Math.round(currentTotalEur * 655.957).toLocaleString("fr-FR")} FCFA)` :
+                   moyenPaiement === "wero" ? `Acheter par Wero (${currentTotalEur.toFixed(2)} €)` :
+                   `Acheter par Carte (${currentTotalEur.toFixed(2)} €)`}
+                </span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </form>
 

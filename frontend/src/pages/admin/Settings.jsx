@@ -36,12 +36,14 @@ export default function AdminSettings({ defaultTab = "general" }) {
       }
       
       // Assainissement strict pour éviter les objets corrompus géants (due au spread de string)
-      const sanitizedModes = { especes: true, mvola: true, holam: true, carte: false };
+      const sanitizedModes = { especes: true, mvola: true, holam: true, carte: false, wave: true, orange: true };
       if (data.modesPaiement && typeof data.modesPaiement === "object" && !data.modesPaiement["0"]) {
         if (typeof data.modesPaiement.especes === "boolean") sanitizedModes.especes = data.modesPaiement.especes;
         if (typeof data.modesPaiement.mvola === "boolean") sanitizedModes.mvola = data.modesPaiement.mvola;
         if (typeof data.modesPaiement.holam === "boolean") sanitizedModes.holam = data.modesPaiement.holam;
         if (typeof data.modesPaiement.carte === "boolean") sanitizedModes.carte = data.modesPaiement.carte;
+        if (typeof data.modesPaiement.wave === "boolean") sanitizedModes.wave = data.modesPaiement.wave;
+        if (typeof data.modesPaiement.orange === "boolean") sanitizedModes.orange = data.modesPaiement.orange;
       }
       data.modesPaiement = sanitizedModes;
 
