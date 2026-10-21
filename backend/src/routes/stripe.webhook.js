@@ -72,6 +72,11 @@ router.post("/", async (req, res) => {
               statutPaiement: "paye",
               receiptUrl: receiptUrl
             });
+
+            // Déclencher l'envoi direct de crédit Reloadly
+            const { dispatchRechargeIfEligible } = require("../services/reloadlyService");
+            dispatchRechargeIfEligible(existingOrder, boutiqueObj).catch((err) => console.error("⚠️ [Reloadly Stripe Error]:", err.message));
+
             const cmdNum = "COM-B" + String(existingOrder.id).padStart(3, "0");
             if (userId) {
               Notification.create({

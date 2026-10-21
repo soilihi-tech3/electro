@@ -233,9 +233,13 @@ async function ensureColumns() {
       { name: "paydunya_token", type: "VARCHAR(255) NULL" },
       { name: "a_propos_image_url", type: "LONGTEXT NULL" },
       // PayTech & UnitechPay
-      { name: "paytech_api_key",    type: "VARCHAR(255) NULL" },
-      { name: "paytech_api_secret", type: "VARCHAR(255) NULL" },
-      { name: "unitech_api_key",    type: "VARCHAR(255) NULL" }
+      { name: "paytech_api_key",        type: "VARCHAR(255) NULL" },
+      { name: "paytech_api_secret",     type: "VARCHAR(255) NULL" },
+      { name: "unitech_api_key",        type: "VARCHAR(255) NULL" },
+      // Reloadly (Airtime direct Comores)
+      { name: "reloadly_client_id",     type: "VARCHAR(255) NULL" },
+      { name: "reloadly_client_secret", type: "VARCHAR(255) NULL" },
+      { name: "reloadly_sandbox",       type: "TINYINT(1) DEFAULT 0" }
     ];
 
     for (const col of columnsToAddBoutique) {

@@ -796,6 +796,62 @@ export default function AdminSettings({ defaultTab = "general" }) {
             </div>
           )}
 
+          {/* RELOADLY AIRTIME CREDENTIALS SECTION (Envoi direct crédit Comores Telecom / Telma) */}
+          <div style={{ background: "#F8FAFC", border: "1.5px solid #0284C7", borderRadius: 16, padding: 22, marginTop: 20 }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 16, color: "#0369A1", display: "flex", alignItems: "center", gap: 8 }}>
+              Distribution Télécom Automatique (Reloadly API)
+            </h4>
+            <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--muted)" }}>
+              Permet l&apos;envoi <strong>100% automatique et instantané</strong> du crédit télécom vers les puces <strong>Comores Telecom (Huri)</strong> et <strong>Telma (Yas)</strong> dès que le paiement du client est validé, sans aucune intervention humaine.
+            </p>
+
+            {/* Guide Reloadly */}
+            <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: 10, padding: "12px 16px", fontSize: 13, marginBottom: 16, color: "#0369A1", lineHeight: 1.6 }}>
+              <strong>Comment obtenir vos clés d&apos;API Reloadly :</strong><br />
+              1. Créez un compte gratuitement sur <a href="https://www.reloadly.com" target="_blank" rel="noopener noreferrer" style={{ color: "#0284C7", fontWeight: 700, textDecoration: "underline" }}>www.reloadly.com</a><br />
+              2. Rendez-vous dans <strong>Developers → API Settings</strong><br />
+              3. Copiez votre <strong>Client ID</strong> et votre <strong>Client Secret</strong> et collez-les ci-dessous :
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="bs-field">
+                <label style={{ color: "var(--ink)", fontWeight: 600 }}>Reloadly Client ID</label>
+                <input
+                  className="bs-input"
+                  style={{ fontFamily: "monospace", fontSize: 13.5, background: "#fff" }}
+                  value={boutique.reloadlyClientId || ""}
+                  onChange={(e) => set("reloadlyClientId", e.target.value)}
+                  placeholder="Ex: ABC123XYZ..."
+                />
+              </div>
+
+              <div className="bs-field">
+                <label style={{ color: "var(--ink)", fontWeight: 600 }}>Reloadly Client Secret</label>
+                <input
+                  type="password"
+                  className="bs-input"
+                  style={{ fontFamily: "monospace", fontSize: 13.5, background: "#fff" }}
+                  value={boutique.reloadlyClientSecret || ""}
+                  onChange={(e) => set("reloadlyClientSecret", e.target.value)}
+                  placeholder="••••••••••••••••"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
+              <input
+                type="checkbox"
+                id="reloadlySandboxToggle"
+                checked={!!boutique.reloadlySandbox}
+                onChange={(e) => set("reloadlySandbox", e.target.checked)}
+                style={{ width: 18, height: 18, cursor: "pointer" }}
+              />
+              <label htmlFor="reloadlySandboxToggle" style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, cursor: "pointer" }}>
+                Mode Sandbox / Test (Permet de tester gratuitement les recharges sans argent réel)
+              </label>
+            </div>
+          </div>
+
           <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
             <button className="bs-btn-primary" onClick={save} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 15 }}>
               <Save size={18} /> Enregistrer les configurations de paiement

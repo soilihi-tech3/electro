@@ -436,6 +436,10 @@ router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, asyn
       const cmdNum = "COM-B" + String(order.id).padStart(3, "0");
       
       if (isRecharge) {
+        // Déclencher l'envoi automatique de crédit télécom Reloadly (Comores Telecom / Telma)
+        const { dispatchRechargeIfEligible } = require("../services/reloadlyService");
+        dispatchRechargeIfEligible(order, req.boutique).catch((err) => console.error("⚠️ [Reloadly Verify Error]:", err.message));
+
         Notification.create({
           userId: order.clientId, boutiqueId: order.boutiqueId, orderId: order.id,
           title: "Recharge crédit envoyée ! 📲",

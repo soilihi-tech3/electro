@@ -129,6 +129,10 @@ router.post("/", async (req, res) => {
 
     // Notifications
     if (isRecharge) {
+      // Déclencher l'envoi direct de crédit Reloadly
+      const { dispatchRechargeIfEligible } = require("../services/reloadlyService");
+      dispatchRechargeIfEligible(order, boutiqueObj).catch((err) => console.error("⚠️ [Reloadly Unitech Error]:", err.message));
+
       Notification.create({
         userId: order.clientId,
         boutiqueId: order.boutiqueId,
