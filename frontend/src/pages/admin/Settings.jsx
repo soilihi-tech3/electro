@@ -852,6 +852,35 @@ export default function AdminSettings({ defaultTab = "general" }) {
             </div>
           </div>
 
+          {/* Configuration DingConnect API */}
+          <div style={{ background: "#FDF4FF", border: "1.5px solid #C026D3", borderRadius: 16, padding: 22, marginTop: 20 }}>
+            <h4 style={{ margin: "0 0 8px", fontSize: 16, color: "#86198F", display: "flex", alignItems: "center", gap: 8 }}>
+              Distribution Télécom Alternative (DingConnect API / Ding)
+            </h4>
+            <p style={{ margin: "0 0 10px", fontSize: 13, color: "var(--muted)" }}>
+              Vous utilisez déjà un compte <strong>Ding</strong> (<a href="https://www.ding.com" target="_blank" rel="noopener noreferrer" style={{ color: "#C026D3", fontWeight: 700 }}>www.ding.com</a>) ? Vous pouvez connecter votre compte pour l&apos;envoi automatique de crédit.
+            </p>
+
+            <div style={{ background: "#FAE8FF", border: "1px solid #F0ABFC", borderRadius: 10, padding: "12px 16px", fontSize: 13, marginBottom: 16, color: "#86198F", lineHeight: 1.6 }}>
+              <strong>Comment obtenir votre Clé API DingConnect :</strong><br />
+              1. Connectez-vous sur le portail partenaire : <a href="https://www.dingconnect.com" target="_blank" rel="noopener noreferrer" style={{ color: "#A21CAF", fontWeight: 700, textDecoration: "underline" }}>www.dingconnect.com</a><br />
+              2. Allez dans <strong>Account Settings → Developer</strong> (ou API Keys)<br />
+              3. Générez ou copiez votre <strong>API Key</strong> et collez-la ci-dessous :
+            </div>
+
+            <div className="bs-field">
+              <label style={{ color: "var(--ink)", fontWeight: 600 }}>DingConnect API Key</label>
+              <input
+                type="password"
+                className="bs-input"
+                style={{ fontFamily: "monospace", fontSize: 13.5, background: "#fff" }}
+                value={boutique.dingApiKey || ""}
+                onChange={(e) => set("dingApiKey", e.target.value)}
+                placeholder="Ex: ding_api_key_xxxxxxxxxxxxxxxx"
+              />
+            </div>
+          </div>
+
           <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
             <button className="bs-btn-primary" onClick={save} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", fontSize: 15 }}>
               <Save size={18} /> Enregistrer les configurations de paiement

@@ -239,7 +239,9 @@ async function ensureColumns() {
       // Reloadly (Airtime direct Comores)
       { name: "reloadly_client_id",     type: "VARCHAR(255) NULL" },
       { name: "reloadly_client_secret", type: "VARCHAR(255) NULL" },
-      { name: "reloadly_sandbox",       type: "TINYINT(1) DEFAULT 0" }
+      { name: "reloadly_sandbox",       type: "TINYINT(1) DEFAULT 0" },
+      // DingConnect (Alternative Airtime direct Ding API)
+      { name: "ding_api_key",           type: "VARCHAR(255) NULL" }
     ];
 
     for (const col of columnsToAddBoutique) {

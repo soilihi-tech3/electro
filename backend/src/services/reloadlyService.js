@@ -167,7 +167,10 @@ async function sendAirtimeTopup({ phone, amountKmf, amountEur, orderId, boutique
 }
 
 /**
- * Traite une commande de recharge mobile et déclenche l'envoi Reloadly si éligible
+const { sendDingAirtimeTopup } = require("./dingConnectService");
+
+/**
+ * Traite une commande de recharge mobile et déclenche l'envoi direct (DingConnect ou Reloadly)
  */
 async function dispatchRechargeIfEligible(order, boutiqueObj = null) {
   if (!order) return;
@@ -175,7 +178,12 @@ async function dispatchRechargeIfEligible(order, boutiqueObj = null) {
   if (!isRecharge) return;
 
   // Éviter d'envoyer deux fois si déjà envoyé
-  if (order.notes && order.notes.includes("[RELOADLY AUTOMATIQUE: ENVOYÉ")) {
+  if (
+    order.notes &&
+    (order.notes.includes("[RELOADLY AUTOMATIQUE: ENVOYÉ") ||
+     order.notes.includes("[DING AUTOMATIQUE: ENVOYÉ") ||
+     order.notes.includes("[AIRTIME AUTOMATIQUE: ENVOYÉ"))
+  ) {
     return;
   }
 
@@ -186,25 +194,56 @@ async function dispatchRechargeIfEligible(order, boutiqueObj = null) {
   const amountKmf = kmfMatch ? Number(kmfMatch[1].replace(/\s/g, "")) : 1000;
 
   if (!phone) {
-    console.warn("⚠️ [Reloadly] Numéro de téléphone introuvable dans la commande #" + order.id);
+    console.warn("⚠️ [Airtime Dispatch] Numéro de téléphone introuvable dans la commande #" + order.id);
     return;
   }
 
-  const res = await sendAirtimeTopup({
-    phone,
-    amountKmf,
-    amountEur: order.total,
-    orderId: order.id,
-    boutique: boutiqueObj
-  });
+  const dingKey = (boutiqueObj?.dingApiKey || process.env.DING_API_KEY || "").trim();
+  const reloadlyId = (boutiqueObj?.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || "").trim();
 
-  if (res && res.success) {
-    const updatedNotes = `${order.notes || ""} | [RELOADLY AUTOMATIQUE: ENVOYÉ - TransID: ${res.transactionId}]`;
-    await order.update({ notes: updatedNotes }).catch(() => {});
-  } else if (res) {
-    const updatedNotes = `${order.notes || ""} | [RELOADLY INFO: ${res.message || res.reason}]`;
-    await order.update({ notes: updatedNotes }).catch(() => {});
+  // 1. Priorité DingConnect si la clé Ding est renseignée
+  if (dingKey) {
+    console.log(`🚀 [Airtime Dispatch] Tentative d'envoi via DingConnect API...`);
+    const dingRes = await sendDingAirtimeTopup({
+      phone,
+      amountKmf,
+      amountEur: order.total,
+      orderId: order.id,
+      apiKey: dingKey
+    });
+
+    if (dingRes && dingRes.success) {
+      const updatedNotes = `${order.notes || ""} | [DING AUTOMATIQUE: ENVOYÉ - Ref: ${dingRes.transactionId}]`;
+      await order.update({ notes: updatedNotes }).catch(() => {});
+      return dingRes;
+    } else {
+      console.warn("⚠️ [DingConnect Échec, repli sur Reloadly si dispo]:", dingRes?.message);
+    }
   }
+
+  // 2. Repli / Utilisation de Reloadly si configuré
+  if (reloadlyId) {
+    console.log(`🚀 [Airtime Dispatch] Tentative d'envoi via Reloadly API...`);
+    const res = await sendAirtimeTopup({
+      phone,
+      amountKmf,
+      amountEur: order.total,
+      orderId: order.id,
+      boutique: boutiqueObj
+    });
+
+    if (res && res.success) {
+      const updatedNotes = `${order.notes || ""} | [RELOADLY AUTOMATIQUE: ENVOYÉ - TransID: ${res.transactionId}]`;
+      await order.update({ notes: updatedNotes }).catch(() => {});
+      return res;
+    } else if (res) {
+      const updatedNotes = `${order.notes || ""} | [RELOADLY INFO: ${res.message || res.reason}]`;
+      await order.update({ notes: updatedNotes }).catch(() => {});
+      return res;
+    }
+  }
+
+  console.warn("⚠️ [Airtime Dispatch] Ni DingConnect ni Reloadly ne sont configurés. La recharge reste en attente de validation manuelle.");
 }
 
 module.exports = {

@@ -71,7 +71,9 @@ const Boutique = sequelize.define("Boutique", {
   // Reloadly — Envoi direct automatique crédit télécom
   reloadlyClientId:     { type: DataTypes.STRING(255), allowNull: true, field: "reloadly_client_id" },
   reloadlyClientSecret: { type: DataTypes.STRING(255), allowNull: true, field: "reloadly_client_secret" },
-  reloadlySandbox:      { type: DataTypes.BOOLEAN, defaultValue: false, field: "reloadly_sandbox" }
+  reloadlySandbox:      { type: DataTypes.BOOLEAN, defaultValue: false, field: "reloadly_sandbox" },
+  // DingConnect — Envoi direct automatique alternatif via Ding API
+  dingApiKey:           { type: DataTypes.STRING(255), allowNull: true, field: "ding_api_key" }
 }, { tableName: "boutiques" });
 
 module.exports = Boutique;
