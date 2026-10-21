@@ -64,6 +64,26 @@ async function getComorosProducts(apiKey) {
 }
 
 /**
+ * Détermine le SkuCode et le SendValue optimaux pour les Comores sur DingConnect
+ */
+function resolveComorosSkuAndSendValue(cleanPhone, amountKmf, amountEur) {
+  const local = cleanPhone.startsWith("269") ? cleanPhone.slice(3) : cleanPhone;
+  const isHuri = local.startsWith("3"); // Les numéros Comores Telecom / Huri commencent par 3
+
+  if (isHuri) {
+    if (amountKmf <= 1000) return { skuCode: "O5KM51809", sendValue: 2.99 };
+    if (amountKmf <= 2000) return { skuCode: "O5KM63313", sendValue: 5.98 };
+    if (amountKmf <= 5000) return { skuCode: "O5KM41603", sendValue: 14.95 };
+    if (amountKmf <= 10000) return { skuCode: "O5KM89834", sendValue: 29.90 };
+    return { skuCode: "O5KM37448", sendValue: 44.85 };
+  } else {
+    // Telma (Yas) Comores : Produit flexible 2FKMKM27699 (Min 2 USD)
+    const calcUsd = Math.max(2, Math.round(((Number(amountKmf) || 1000) / 334.45) * 100) / 100);
+    return { skuCode: "2FKMKM27699", sendValue: calcUsd };
+  }
+}
+
+/**
  * Envoie instantanément le crédit télécom au destinataire aux Comores via DingConnect
  * @param {Object} params
  * @param {string} params.phone - Numéro comorien (ex: "+2693326532" ou "3326532")
@@ -87,27 +107,11 @@ async function sendDingAirtimeTopup({ phone, amountKmf, amountEur, orderId, apiK
   const fullPhone = cleanPhone.startsWith("269") ? `+${cleanPhone}` : `+269${cleanPhone}`;
 
   try {
-    // 1. Recherche du compte ou des produits Comores
-    const lookup = await lookupDingAccount(fullPhone, key);
-    let skuCode = lookup?.ProviderCode || lookup?.SkuCode;
-
-    // Si pas de SkuCode direct, chercher dans les produits Comores
-    if (!skuCode) {
-      const products = await getComorosProducts(key);
-      if (products.length > 0) {
-        // Sélectionne le premier produit adapté ou produit flexible
-        const flexible = products.find(p => p.MinSendValue && p.MaxSendValue);
-        skuCode = flexible ? flexible.SkuCode : products[0].SkuCode;
-      }
-    }
-
-    if (!skuCode) {
-      skuCode = "KM_TOPUP"; // Code fallback générique
-    }
+    const { skuCode, sendValue } = resolveComorosSkuAndSendValue(cleanPhone, amountKmf, amountEur);
 
     const payload = {
       SkuCode: skuCode,
-      SendValue: Number(amountEur || 5), // Ding facture souvent dans la devise du compte (ex: EUR)
+      SendValue: sendValue,
       AccountNumber: fullPhone,
       DistributorRef: `EASY-${orderId || Date.now()}`,
       ValidateOnly: false
