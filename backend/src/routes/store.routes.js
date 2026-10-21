@@ -327,22 +327,24 @@ router.post("/:slug/orders", loadBoutique, authenticate, requireRole("client"), 
       ]
     });
     
-    // Notifications automatiques
-    const cmdNum = "COM-B" + String(order.id).padStart(3, "0");
-    const totalFormateeur = Number(sousTotal + fraisLivraison).toFixed(2);
-    Notification.create({
-      userId: req.user.id, boutiqueId: req.boutique.id, orderId: order.id,
-      title: "Commande enregistrée",
-      message: `Votre commande #${cmdNum} (${totalFormateeur} €) a été enregistrée avec succès.`,
-      type: "order"
-    }).catch(() => {});
+    // Notifications automatiques (seulement si la commande n'est pas en attente de paiement en ligne)
+    if (statutInit !== "en_attente_paiement") {
+      const cmdNum = "COM-B" + String(order.id).padStart(3, "0");
+      const totalFormateeur = Number(sousTotal + fraisLivraison).toFixed(2);
+      Notification.create({
+        userId: req.user.id, boutiqueId: req.boutique.id, orderId: order.id,
+        title: "Commande enregistrée",
+        message: `Votre commande #${cmdNum} (${totalFormateeur} €) a été enregistrée avec succès.`,
+        type: "order"
+      }).catch(() => {});
 
-    Notification.create({
-      userId: null, boutiqueId: req.boutique.id, orderId: order.id,
-      title: "Nouvelle commande reçue !",
-      message: `Nouvelle commande #${cmdNum} reçue de ${req.user.nom} (${totalFormateeur} €).`,
-      type: "order"
-    }).catch(() => {});
+      Notification.create({
+        userId: null, boutiqueId: req.boutique.id, orderId: order.id,
+        title: "Nouvelle commande reçue !",
+        message: `Nouvelle commande #${cmdNum} reçue de ${req.user.nom} (${totalFormateeur} €).`,
+        type: "order"
+      }).catch(() => {});
+    }
 
     const { envoyerNotificationAdminNouvelleCommande, envoyerConfirmationCommande } = require("../services/emailService");
     const originUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
@@ -381,33 +383,50 @@ router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, asyn
     });
 
     if (!order) return res.status(404).json({ message: "Commande introuvable" });
-    
+
     // Si la commande est déjà validée (ex: par le webhook), on ne fait rien.
-    if (order.statut !== "en_attente_paiement") {
+    if (order.statut !== "en_attente_paiement" && order.statutPaiement === "paye") {
       return res.json({ verified: true, order });
     }
 
-    if (!order.stripeSessionId) {
-      return res.status(400).json({ message: "Pas de session Stripe associée" });
+    const isRecharge = order.typeVente === "recharge_mobile";
+    const nextStatut = isRecharge ? "recuperee" : "en_attente";
+    let receiptUrl = order.receiptUrl || null;
+    let isPaymentValid = false;
+
+    // CAS 1: STRIPE (CARTE BANCAIRE)
+    if (order.moyenPaiement === "carte") {
+      if (!order.stripeSessionId) {
+        return res.status(400).json({ message: "Pas de session Stripe associée" });
+      }
+
+      const stripeSecretKey = getStripeSecretKey(req.boutique);
+      if (!stripeSecretKey) {
+        return res.status(400).json({ message: "Clé Stripe non configurée" });
+      }
+
+      const stripe = require("stripe")(stripeSecretKey);
+      const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+
+      if (session && session.payment_status === "paid") {
+        isPaymentValid = true;
+        try {
+          if (session.payment_intent) {
+            const pi = await stripe.paymentIntents.retrieve(session.payment_intent, { expand: ["latest_charge"] });
+            if (pi.latest_charge && pi.latest_charge.receipt_url) {
+              receiptUrl = pi.latest_charge.receipt_url;
+            }
+          }
+        } catch (e) {}
+      }
+    } 
+    // CAS 2: UNITECHPAY (WAVE & ORANGE MONEY)
+    else if (order.moyenPaiement === "wave" || order.moyenPaiement === "orange" || order.moyenPaiement === "unitechpay" || order.moyenPaiement === "paytech") {
+      // Redirection après succès de paiement Wave / Orange Money
+      isPaymentValid = true;
     }
 
-    const stripeSecretKey = getStripeSecretKey(req.boutique);
-    const stripe = require("stripe")(stripeSecretKey);
-
-    const session = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
-
-    if (session.payment_status === "paid") {
-      let receiptUrl = null;
-      try {
-        if (session.payment_intent) {
-          const pi = await stripe.paymentIntents.retrieve(session.payment_intent, { expand: ["latest_charge"] });
-          if (pi.latest_charge && pi.latest_charge.receipt_url) {
-            receiptUrl = pi.latest_charge.receipt_url;
-          }
-        }
-      } catch (e) {}
-
-      const nextStatut = order.typeVente === "recharge_mobile" ? "recuperee" : "en_attente";
+    if (isPaymentValid) {
       await order.update({ 
         statut: nextStatut, 
         statutPaiement: "paye",
@@ -416,7 +435,7 @@ router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, asyn
 
       const cmdNum = "COM-B" + String(order.id).padStart(3, "0");
       
-      if (order.typeVente === "recharge_mobile") {
+      if (isRecharge) {
         Notification.create({
           userId: order.clientId, boutiqueId: order.boutiqueId, orderId: order.id,
           title: "Recharge crédit envoyée ! 📲",
@@ -426,7 +445,7 @@ router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, asyn
         Notification.create({
           userId: null, boutiqueId: order.boutiqueId, orderId: order.id,
           title: "Nouvelle Recharge Crédit Mobile",
-          message: `Le paiement pour la recharge #${cmdNum} a été confirmé via Stripe.`,
+          message: `Le paiement pour la recharge #${cmdNum} a été confirmé via ${order.moyenPaiement}.`,
           type: "order"
         }).catch(() => {});
         
@@ -453,7 +472,7 @@ router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, asyn
         Notification.create({
           userId: null, boutiqueId: order.boutiqueId, orderId: order.id,
           title: "Paiement en ligne reçu",
-          message: `Le paiement pour la commande #${cmdNum} a été confirmé via Stripe/Wero.`,
+          message: `Le paiement pour la commande #${cmdNum} a été confirmé via ${order.moyenPaiement}.`,
           type: "order"
         }).catch(() => {});
         
@@ -473,11 +492,9 @@ router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, asyn
 
       clearCachePattern("/api/store").catch(() => {});
       broadcast("order_updated", { orderId: order.id, statut: nextStatut, clientId: order.clientId, boutiqueId: order.boutiqueId });
-      
-      return res.json({ verified: true, order });
     }
 
-    res.json({ verified: false, order });
+    return res.json({ verified: isPaymentValid, order });
   } catch (err) {
     console.error("Erreur verify-payment:", err);
     res.status(500).json({ message: "Erreur serveur" });

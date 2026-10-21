@@ -146,11 +146,28 @@ function verifyWebhookSignature({ rawBody, headers = {}, body = {}, apiKey = nul
   return false;
 }
 
+/**
+ * 6. Configurer l'URL de webhook auprès d'UnitechPay
+ * Endpoint: POST /api.php?action=configure_webhook
+ */
+async function configureWebhook({ webhookUrl, events = null, apiKey = null }) {
+  const data = { webhook_url: webhookUrl };
+  if (Array.isArray(events)) data.events = events;
+  return await unitechRequest({
+    action: "configure_webhook",
+    method: "POST",
+    apiKey,
+    data
+  });
+}
+
 module.exports = {
   createWavePayment,
   createOrangePayment,
   createIntlPayment,
   getBalance,
+  configureWebhook,
   verifyWebhookSignature,
   unitechRequest
 };
+

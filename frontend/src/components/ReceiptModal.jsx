@@ -23,6 +23,9 @@ const MOYEN_LABELS = {
   wero: "WERO",
   holam: "WERO",
   carte: "CARTE BANCAIRE (VISA / MASTERCARD)",
+  wave: "WAVE (UNITECHPAY)",
+  orange: "ORANGE MONEY (UNITECHPAY)",
+  unitechpay: "UNITECHPAY (MOBILE MONEY)",
   whatsapp: "COMMANDE WHATSAPP"
 };
 
@@ -31,6 +34,7 @@ export default function ReceiptModal({ order, boutique, onClose }) {
   if (!order) return null;
 
   const storeName = boutique?.nom || "Marché Vert";
+  const activeDevise = boutique?.devise || "EUR";
 
   // 1. DYNAMIC CLIENT NAME
   const clientName = order.client?.nom || order.nomClient || user?.nom || "Client connecté";
@@ -148,8 +152,8 @@ export default function ReceiptModal({ order, boutique, onClose }) {
                   {displayName}
                 </span>
                 <span style={{ textAlign: "center" }}>{it.quantite || 1}</span>
-                <span style={{ textAlign: "right" }}>{pu.toFixed(2)} €</span>
-                <span style={{ textAlign: "right", fontWeight: 800 }}>{totLine.toFixed(2)} €</span>
+                <span style={{ textAlign: "right" }}>{fcfa(pu, activeDevise)}</span>
+                <span style={{ textAlign: "right", fontWeight: 800 }}>{fcfa(totLine, activeDevise)}</span>
               </div>
             );
           })}
@@ -159,23 +163,28 @@ export default function ReceiptModal({ order, boutique, onClose }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "#0F172A", marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "#475569" }}>Sous-Total:</span>
-            <span style={{ fontWeight: 700 }}>{fcfa(order.sousTotal || order.total)}</span>
+            <span style={{ fontWeight: 700 }}>{fcfa(order.sousTotal || order.total, activeDevise)}</span>
           </div>
           {(order.fraisLivraison && order.fraisLivraison !== 0 && order.fraisLivraison !== "0") && (
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: "#475569" }}>Frais de livraison:</span>
-              <span style={{ fontWeight: 700 }}>{isNaN(Number(order.fraisLivraison)) ? order.fraisLivraison : fcfa(Number(order.fraisLivraison))}</span>
+              <span style={{ fontWeight: 700 }}>{isNaN(Number(order.fraisLivraison)) ? order.fraisLivraison : fcfa(Number(order.fraisLivraison), activeDevise)}</span>
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, fontWeight: 900, color: "#0F172A", borderTop: "1px dashed #64748B", paddingTop: 8, marginTop: 4 }}>
             <span>TOTAL RÉGLÉ:</span>
             <div style={{ textAlign: "right" }}>
-              <div style={{ color: "#15803D" }}>{fcfa(order.total)}</div>
+              <div style={{ color: "#15803D" }}>{fcfa(order.total, activeDevise)}</div>
+              {(order.moyenPaiement === "wave" || order.moyenPaiement === "orange") && (
+                <div style={{ fontSize: 12, color: "#0284C7", fontWeight: 800, marginTop: 2 }}>
+                  ≈ {Math.round(Number(order.total) * 655.957).toLocaleString("fr-FR")} FCFA
+                </div>
+              )}
               {isRecharge && (
-                <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700 }}>
+                <div style={{ fontSize: 11, color: "#64748B", fontWeight: 700, marginTop: 2 }}>
                   {(() => {
                     const match = (order.notes || "").match(/(\d[\d\s]*)\s*KMF/i);
-                    return match ? `Valeur du crédit : ${match[1].trim()} KMF = ${fcfa(order.total)}` : "";
+                    return match ? `Crédit destiné : ${match[1].trim()} KMF` : "";
                   })()}
                 </div>
               )}

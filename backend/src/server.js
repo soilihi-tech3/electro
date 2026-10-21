@@ -232,10 +232,10 @@ async function ensureColumns() {
       { name: "paydunya_private_key", type: "VARCHAR(255) NULL" },
       { name: "paydunya_token", type: "VARCHAR(255) NULL" },
       { name: "a_propos_image_url", type: "LONGTEXT NULL" },
-      // PayTech — Wave & Orange Money
+      // PayTech & UnitechPay
       { name: "paytech_api_key",    type: "VARCHAR(255) NULL" },
-      { name: "paytech_api_secret", type: "VARCHAR(255) NULL" }
-
+      { name: "paytech_api_secret", type: "VARCHAR(255) NULL" },
+      { name: "unitech_api_key",    type: "VARCHAR(255) NULL" }
     ];
 
     for (const col of columnsToAddBoutique) {
