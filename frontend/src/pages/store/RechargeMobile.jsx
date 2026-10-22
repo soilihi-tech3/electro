@@ -37,12 +37,13 @@ const OPERATORS = [
     logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwXCzHPxEU7yFGviVbPuXzSwtISwrgUsYltf6K2OdEbg&s=10",
     description: "Puces Huri Comores Telecom (numéros commençant par 3)",
     recharges: [
-      { eur: 2.70, kmf: 1000, label: "1 000 KMF (~2.70 €)", popular: false },
-      { eur: 5.40, kmf: 2000, label: "2 000 KMF (~5.40 €)", popular: true },
-      { eur: 13.50, kmf: 5000, label: "5 000 KMF (~13.50 €)", popular: true },
-      { eur: 1.35, kmf: 500, label: "500 KMF (~1.35 €)", popular: false },
-      { eur: 27.00, kmf: 10000, label: "10 000 KMF (~27.00 €)", popular: false },
-      { eur: 40.50, kmf: 15000, label: "15 000 KMF (~40.50 €)", popular: false }
+      { eur: 1.70, kmf: 500, label: "500 KMF (1 115 FCFA)", popular: false },
+      { eur: 3.20, kmf: 1000, label: "1 000 KMF (2 100 FCFA)", popular: true },
+      { eur: 6.30, kmf: 2000, label: "2 000 KMF (4 130 FCFA)", popular: true },
+      { eur: 9.40, kmf: 3000, label: "3 000 KMF (6 160 FCFA)", popular: false },
+      { eur: 15.50, kmf: 5000, label: "5 000 KMF (10 160 FCFA)", popular: true },
+      { eur: 30.50, kmf: 10000, label: "10 000 KMF (20 000 FCFA)", popular: false },
+      { eur: 45.00, kmf: 15000, label: "15 000 KMF (29 500 FCFA)", popular: false }
     ]
   },
   {
@@ -55,14 +56,12 @@ const OPERATORS = [
     logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRHntdwTjQynlyFFXrmTp9qv9tpNuYIARtdazD377Rv4g&s=10",
     description: "Puces Yas Telma (numéros commençant par 4)",
     recharges: [
-      { eur: 9.00, kmf: 3288, label: "3 288 KMF (9.00 €)", popular: false },
-      { eur: 13.50, kmf: 4955, label: "4 955 KMF (13.50 €)", popular: true },
-      { eur: 18.00, kmf: 6583, label: "6 583 KMF (18.00 €)", popular: true },
-      { eur: 4.50, kmf: 1649, label: "1 649 KMF (4.50 €)", popular: false },
-      { eur: 11.25, kmf: 4117, label: "4 117 KMF (11.25 €)", popular: false },
-      { eur: 22.50, kmf: 8241, label: "8 241 KMF (22.50 €)", popular: false },
-      { eur: 33.75, kmf: 12392, label: "12 392 KMF (33.75 €)", popular: false },
-      { eur: 78.75, kmf: 27283, label: "27 283 KMF (78.75 €)", popular: false }
+      { eur: 3.00, kmf: 1000, label: "1 000 KMF (1 970 FCFA)", popular: false },
+      { eur: 5.90, kmf: 2000, label: "2 000 KMF (3 870 FCFA)", popular: true },
+      { eur: 8.70, kmf: 3000, label: "3 000 KMF (5 700 FCFA)", popular: false },
+      { eur: 14.50, kmf: 5000, label: "5 000 KMF (9 510 FCFA)", popular: true },
+      { eur: 28.50, kmf: 10000, label: "10 000 KMF (18 700 FCFA)", popular: false },
+      { eur: 42.50, kmf: 15000, label: "15 000 KMF (27 880 FCFA)", popular: false }
     ]
   }
 ];
@@ -565,8 +564,23 @@ export default function RechargeMobile() {
                       </span>
                     )}
                     <div style={{ fontSize: 20, fontWeight: 900 }}>{rec.kmf.toLocaleString("fr-FR")} KMF</div>
-                    <div style={{ fontSize: 13, opacity: 0.95, marginTop: 4, fontWeight: 700 }}>
-                      {rec.eur.toFixed(2)} € <span style={{ opacity: 0.85, fontWeight: 600 }}>({Math.round(rec.eur * 655.957).toLocaleString("fr-FR")} FCFA)</span>
+                    <div style={{
+                      marginTop: 6,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 2
+                    }}>
+                      <span style={{
+                        fontSize: 15,
+                        fontWeight: 900,
+                        color: isSelected ? "#FEF08A" : "#0284C7"
+                      }}>
+                        {Math.round(rec.eur * 655.957).toLocaleString("fr-FR")} FCFA
+                      </span>
+                      <span style={{ fontSize: 12, opacity: isSelected ? 0.9 : 0.65, fontWeight: 600 }}>
+                        soit {rec.eur.toFixed(2)} €
+                      </span>
                     </div>
                   </div>
                 );
@@ -603,10 +617,12 @@ export default function RechargeMobile() {
             </div>
 
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>Montant à payer</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: "var(--forest-dark)" }}>{currentTotalEur.toFixed(2)} €</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--forest)" }}>
-                ≈ {Math.round(currentTotalEur * 655.957).toLocaleString("fr-FR")} FCFA
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Montant total à payer</div>
+              <div style={{ fontSize: 25, fontWeight: 900, color: "var(--forest-dark)" }}>
+                {Math.round(currentTotalEur * 655.957).toLocaleString("fr-FR")} FCFA
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--forest)", marginTop: 2 }}>
+                soit {currentTotalEur.toFixed(2)} €
               </div>
             </div>
           </div>
