@@ -266,14 +266,21 @@ export default function RechargeMobile() {
         return;
       }
 
-      if (res.data.url) {
+      if (res.data?.url) {
         window.location.href = res.data.url;
         return;
+      } else {
+        throw new Error(res.data?.message || "Lien de paiement non reçu.");
       }
     } catch (err) {
-      console.warn("Fallback paiement recharge", err);
-      const fallbackUrl = `https://www.ding.com/fr/topup?countryIso=KM&z=KzI2OT${phone}&operatorCode=${operator.id === "yas" ? "YAS" : "CT"}`;
-      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+      console.error("Erreur initialisation paiement recharge:", err);
+      // Ding désactivé au profit de Reloadly (ne plus rediriger vers ding.com) :
+      // const fallbackUrl = `https://www.ding.com/fr/topup?countryIso=KM&z=KzI2OT${phone}&operatorCode=${operator.id === "yas" ? "YAS" : "CT"}`;
+      // window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+
+      const errorMsgDetail = err.response?.data?.message || err.message || "Impossible de démarrer la session de paiement. Veuillez réessayer.";
+      setErrorMsg(errorMsgDetail);
+      showToast(errorMsgDetail, "error");
     } finally {
       setLoading(false);
     }
