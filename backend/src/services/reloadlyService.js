@@ -52,6 +52,58 @@ async function getReloadlyToken(clientId, clientSecret, isSandbox = false) {
   return cachedToken;
 }
 
+let cachedBalanceData = null;
+let balanceExpiresAt = 0;
+
+/**
+ * Récupère le solde du portefeuille Reloadly (avec cache 30s)
+ */
+async function getReloadlyBalance(clientId, clientSecret, isSandbox = false) {
+  const now = Date.now();
+  if (cachedBalanceData && now < balanceExpiresAt) {
+    return cachedBalanceData;
+  }
+
+  try {
+    const token = await getReloadlyToken(clientId, clientSecret, isSandbox);
+    const baseUrl = isSandbox ? "https://topups-sandbox.reloadly.com" : "https://topups.reloadly.com";
+
+    const res = await fetch(`${baseUrl}/accounts/balance`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/com.reloadly.topups-v1+json"
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && typeof data.balance === "number") {
+      cachedBalanceData = {
+        success: true,
+        balance: data.balance,
+        currencyCode: data.currencyCode || "USD"
+      };
+      balanceExpiresAt = now + 30000; // cache 30 secondes
+      return cachedBalanceData;
+    }
+
+    return {
+      success: false,
+      balance: 0,
+      currencyCode: "USD",
+      error: data.message || `Status ${res.status}`
+    };
+  } catch (err) {
+    return {
+      success: false,
+      balance: 0,
+      currencyCode: "USD",
+      error: err.message
+    };
+  }
+}
+
 /**
  * Détecte l'opérateur aux Comores (Huri vs Telma) à partir du numéro
  */
@@ -252,6 +304,7 @@ module.exports = {
   sendAirtimeTopup,
   dispatchRechargeIfEligible,
   getReloadlyToken,
+  getReloadlyBalance,
   autoDetectOperator
 };
 

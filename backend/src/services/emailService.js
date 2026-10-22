@@ -440,6 +440,54 @@ async function envoyerEmailCreationCompte(email, nomUtilisateur, identifiant, te
   }
 }
 
+/**
+ * Alerte l'administrateur lorsque le solde Reloadly est épuisé ou insuffisant
+ */
+let lastLowBalanceAlertAt = 0;
+async function sendReloadlyLowBalanceAlert({ adminEmail, balance = 0, currency = "USD", attemptedPhone = "", amountKmf = "", boutiqueNom = "EasyMarket" }) {
+  try {
+    const now = Date.now();
+    // Limite d'envoi : max 1 alerte toutes les 15 minutes
+    if (now - lastLowBalanceAlertAt < 15 * 60 * 1000) {
+      console.log("ℹ️ [Alerte Solde Reloadly] Alerte déjà envoyée récemment (moins de 15 min), envoi différé.");
+      return false;
+    }
+    lastLowBalanceAlertAt = now;
+
+    const to = adminEmail || process.env.BREVO_SENDER_EMAIL || "soilihiabdou99@gmail.com";
+    const subject = `🚨 [URGENT] Solde Recharge Mobile Épuisé (${balance} ${currency}) - ${boutiqueNom}`;
+    const html = `
+      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #fef2f2; border-radius: 16px; border: 1px solid #fecaca;">
+        <div style="background: #dc2626; padding: 20px; border-radius: 12px; text-align: center; color: #ffffff; margin-bottom: 20px;">
+          <h2 style="margin: 0; font-size: 20px;">⚠️ Solde Reloadly Épuisé (0.00 $)</h2>
+          <p style="margin: 6px 0 0; opacity: 0.9; font-size: 14px;">Action requise : rechargez votre compte Reloadly</p>
+        </div>
+        <div style="background: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <p style="font-size: 15px; color: #1e293b; margin-top: 0;">
+            Un client a tenté d'acheter une recharge de crédit${amountKmf ? ' de <strong>' + amountKmf + ' KMF</strong>' : ''}${attemptedPhone ? ' pour le numéro <strong>' + attemptedPhone + '</strong>' : ''}, mais l'achat a été bloqué pour protéger le client car votre solde Reloadly est actuellement à <strong>${balance} ${currency}</strong>.
+          </p>
+          <div style="background: #f8fafc; padding: 16px; border-radius: 10px; margin: 18px 0; border-left: 4px solid #dc2626;">
+            <div style="font-size: 14px; color: #475569; margin-bottom: 6px;">Solde Actuel Reloadly : <strong style="color: #dc2626; font-size: 16px;">${balance} ${currency}</strong></div>
+            <div style="font-size: 14px; color: #475569; margin-bottom: 6px;">Protection Client : <strong style="color: #16a34a;">Le client n'a PAS été débité</strong></div>
+            <div style="font-size: 14px; color: #475569;">Message affiché au client : <em>"Le service de recharge est momentanément en maintenance. Veuillez réessayer dans quelques minutes."</em></div>
+          </div>
+          <p style="font-size: 14px; color: #334155; line-height: 1.5;">
+            Pour réactiver immédiatement les ventes de crédit mobile, connectez-vous sur votre tableau de bord Reloadly et déposez des fonds dans votre portefeuille (Wallet) :
+          </p>
+          <div style="text-align: center; margin-top: 24px; margin-bottom: 12px;">
+            <a href="https://dashboard.reloadly.com/wallet" style="background: #dc2626; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; font-size: 14px; display: inline-block;">Recharger mon Wallet Reloadly (Dashboard)</a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    return await sendEmailCore({ to, subject, html, type: "reloadly_low_balance_alert" });
+  } catch (err) {
+    console.error("❌ [EMAIL LOW BALANCE ALERT ERROR]:", err.message);
+    return false;
+  }
+}
+
 module.exports = {
   envoyerOTP,
   envoyerConfirmationCommande,
@@ -447,6 +495,7 @@ module.exports = {
   envoyerChangementStatut,
   envoyerResetMotDePasse,
   envoyerEmailCreationCompte,
+  sendReloadlyLowBalanceAlert,
   sendEmailCore,
   // Alias de rétrocompatibilité
   sendMail: ({ to, subject, html }) => sendEmailCore({ to, subject, html, type: "legacy" }),

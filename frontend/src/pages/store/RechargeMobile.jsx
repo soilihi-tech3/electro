@@ -110,17 +110,26 @@ export default function RechargeMobile() {
   const [paymentModalData, setPaymentModalData] = useState(null);
 
   const [dbPlans, setDbPlans] = useState([]);
+  const [maintenanceInfo, setMaintenanceInfo] = useState(null);
 
   useEffect(() => {
-    const fetchPlans = async () => {
+    const fetchPlansAndStatus = async () => {
       try {
-        const res = await api.get(`/store/${SLUG}/recharge-plans`);
-        setDbPlans(res.data);
+        const [plansRes, statusRes] = await Promise.all([
+          api.get(`/store/${SLUG}/recharge-plans`).catch(() => ({ data: [] })),
+          api.get(`/store/${SLUG}/recharge-status`).catch(() => ({ data: { available: true } }))
+        ]);
+        if (plansRes?.data) setDbPlans(plansRes.data);
+        if (statusRes?.data?.inMaintenance) {
+          setMaintenanceInfo(statusRes.data.message || "Le service de recharge est momentanément en maintenance. Veuillez réessayer dans quelques minutes.");
+        } else {
+          setMaintenanceInfo(null);
+        }
       } catch (err) {
         console.error("Erreur lors de la récupération des forfaits de recharge", err);
       }
     };
-    fetchPlans();
+    fetchPlansAndStatus();
   }, []);
 
   // Selection
@@ -217,6 +226,12 @@ export default function RechargeMobile() {
       return;
     }
 
+    if (maintenanceInfo) {
+      setErrorMsg(maintenanceInfo);
+      showToast(maintenanceInfo, "error");
+      return;
+    }
+
     if (!user) {
       showToast("Veuillez vous connecter pour recharger du crédit.", "info");
       navigate(`/connexion?redirect=${encodeURIComponent(location.pathname)}`);
@@ -274,11 +289,14 @@ export default function RechargeMobile() {
       }
     } catch (err) {
       console.error("Erreur initialisation paiement recharge:", err);
-      // Ding désactivé au profit de Reloadly (ne plus rediriger vers ding.com) :
-      // const fallbackUrl = `https://www.ding.com/fr/topup?countryIso=KM&z=KzI2OT${phone}&operatorCode=${operator.id === "yas" ? "YAS" : "CT"}`;
-      // window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+      const isMaint = err.response?.status === 503 || err.response?.data?.code === "RECHARGE_MAINTENANCE";
+      const errorMsgDetail = isMaint
+        ? (err.response?.data?.message || "Le service de recharge est momentanément en maintenance. Veuillez réessayer dans quelques minutes.")
+        : (err.response?.data?.message || err.message || "Impossible de démarrer la session de paiement. Veuillez réessayer.");
 
-      const errorMsgDetail = err.response?.data?.message || err.message || "Impossible de démarrer la session de paiement. Veuillez réessayer.";
+      if (isMaint) {
+        setMaintenanceInfo(errorMsgDetail);
+      }
       setErrorMsg(errorMsgDetail);
       showToast(errorMsgDetail, "error");
     } finally {
@@ -377,6 +395,25 @@ export default function RechargeMobile() {
           <AlertCircle size={22} color="#DC2626" style={{ flexShrink: 0 }} />
           <div>
             <strong>Service momentanément indisponible :</strong> La recharge de crédit mobile a été désactivée pour cette boutique par l&apos;administrateur.
+          </div>
+        </div>
+      )}
+
+      {/* Alerte si le service est momentanément en maintenance (solde portefeuille épuisé) */}
+      {isModuleActive && maintenanceInfo && (
+        <div style={{
+          background: "#FFFBEB", border: "1.5px solid #FDE68A", color: "#B45309",
+          padding: "16px 20px", borderRadius: 16, fontWeight: 600, fontSize: 14,
+          margin: "0 auto 24px", maxWidth: 980, width: "calc(100% - 48px)",
+          display: "flex", alignItems: "center", gap: 14,
+          boxShadow: "0 2px 10px rgba(245, 158, 11, 0.1)"
+        }}>
+          <AlertCircle size={24} color="#D97706" style={{ flexShrink: 0 }} />
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "#92400E", marginBottom: 2 }}>
+              Service momentanément en maintenance
+            </div>
+            <div>{maintenanceInfo}</div>
           </div>
         </div>
       )}
@@ -754,7 +791,7 @@ export default function RechargeMobile() {
           {/* SUBMIT BUTTON */}
           <button
             type="submit"
-            disabled={loading || !isModuleActive}
+            disabled={loading || !isModuleActive || !!maintenanceInfo}
             className="bs-btn-primary"
             style={{
               width: "100%",
@@ -766,9 +803,9 @@ export default function RechargeMobile() {
               justifyContent: "center",
               gap: 10,
               boxShadow: "0 6px 20px rgba(22, 52, 36, 0.2)",
-              opacity: !isModuleActive ? 0.6 : 1,
-              cursor: !isModuleActive ? "not-allowed" : "pointer",
-              background: !isModuleActive ? "var(--muted)" :
+              opacity: (!isModuleActive || !!maintenanceInfo) ? 0.6 : 1,
+              cursor: (!isModuleActive || !!maintenanceInfo) ? "not-allowed" : "pointer",
+              background: (!isModuleActive || !!maintenanceInfo) ? "#64748B" :
                           moyenPaiement === "wave" ? "linear-gradient(135deg, #0369A1, #0EA5E9)" :
                           moyenPaiement === "orange" ? "linear-gradient(135deg, #EA580C, #F97316)" :
                           undefined
@@ -776,6 +813,8 @@ export default function RechargeMobile() {
           >
             {!isModuleActive ? (
               <span>Service désactivé</span>
+            ) : maintenanceInfo ? (
+              <span>⚠️ Service en maintenance (Réessayez dans quelques minutes)</span>
             ) : (
               <>
                 {moyenPaiement === "wave" ? <Smartphone size={20} /> :

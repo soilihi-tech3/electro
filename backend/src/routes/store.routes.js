@@ -4,7 +4,9 @@ const { sequelize, Product, Category, Order, OrderItem, Review, User, Notificati
 const { authenticate, requireRole, loadBoutique } = require("../middleware/auth");
 const { cacheMiddleware, clearCachePattern } = require("../config/cache");
 const { sendOrderConfirmationEmail, sendOrderStatusEmail } = require("../services/email.service");
+const { sendReloadlyLowBalanceAlert } = require("../services/emailService");
 const { broadcast, addClient, removeClient } = require("../utils/broadcaster");
+const { getReloadlyBalance } = require("../services/reloadlyService");
 
 const {
   createWavePayment,
@@ -732,6 +734,38 @@ router.post("/:slug/create-recharge-session", loadBoutique, authenticate, async 
       return res.status(400).json({ message: "Le paiement par Carte bancaire est temporairement indisponible." });
     }
 
+    // ── Vérification préalable du solde Reloadly pour NE PAS débiter le client si le solde est épuisé ──
+    const reloadlyId = (req.boutique.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || "").trim();
+    const reloadlySecret = (req.boutique.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || "").trim();
+    const isSandbox = (process.env.RELOADLY_SANDBOX === "true" || req.boutique.reloadlySandbox === true);
+
+    if (reloadlyId && reloadlySecret && !isSandbox) {
+      try {
+        const balanceInfo = await getReloadlyBalance(reloadlyId, reloadlySecret, isSandbox);
+        if (balanceInfo.success && balanceInfo.balance <= 0.10) {
+          console.warn(`🚨 [Solde Reloadly Épuisé] Solde actuel: ${balanceInfo.balance} ${balanceInfo.currencyCode}. Annulation de la session pour protéger le client.`);
+
+          // Alerter immédiatement l'administrateur par email
+          const adminEmail = req.boutique.emailContact || process.env.BREVO_SENDER_EMAIL || "soilihiabdou99@gmail.com";
+          sendReloadlyLowBalanceAlert({
+            adminEmail,
+            balance: balanceInfo.balance,
+            currency: balanceInfo.currencyCode,
+            attemptedPhone: `+${cleanPhone}`,
+            amountKmf: operatorName || "",
+            boutiqueNom: req.boutique.nom || "EasyMarket"
+          }).catch(() => {});
+
+          return res.status(503).json({
+            code: "RECHARGE_MAINTENANCE",
+            message: "Le service de recharge est momentanément en maintenance. Veuillez réessayer dans quelques minutes."
+          });
+        }
+      } catch (checkErr) {
+        console.warn("⚠️ Impossible de vérifier le solde Reloadly en direct:", checkErr.message);
+      }
+    }
+
     const originUrl = req.headers.origin || process.env.FRONTEND_URL || "http://localhost:5173";
 
     const order = await Order.create({
@@ -909,7 +943,38 @@ router.patch("/:slug/orders/:id/cancel", loadBoutique, authenticate, requireRole
   }
 });
 
-// --- RECHARGE PLANS ROUTES ---
+// --- RECHARGE PLANS & STATUS ROUTES ---
+
+// GET /api/store/:slug/recharge-status (Vérifie si le service est actif et si le solde est suffisant)
+router.get("/:slug/recharge-status", loadBoutique, async (req, res) => {
+  try {
+    const isModuleActive = req.boutique.modulesActifs?.rechargeCredit !== false;
+    if (!isModuleActive) {
+      return res.json({ available: false, inMaintenance: true, message: "Le service de recharge est momentanément désactivé." });
+    }
+
+    const reloadlyId = (req.boutique.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || "").trim();
+    const reloadlySecret = (req.boutique.reloadlyClientSecret || process.env.RELOADLY_CLIENT_SECRET || "").trim();
+    const isSandbox = (process.env.RELOADLY_SANDBOX === "true" || req.boutique.reloadlySandbox === true);
+
+    if (reloadlyId && reloadlySecret && !isSandbox) {
+      const balanceInfo = await getReloadlyBalance(reloadlyId, reloadlySecret, isSandbox);
+      if (balanceInfo.success && balanceInfo.balance <= 0.10) {
+        return res.json({
+          available: false,
+          inMaintenance: true,
+          balance: balanceInfo.balance,
+          currency: balanceInfo.currencyCode,
+          message: "Le service de recharge est momentanément en maintenance. Veuillez réessayer dans quelques minutes."
+        });
+      }
+    }
+
+    return res.json({ available: true, inMaintenance: false });
+  } catch (err) {
+    return res.json({ available: true, inMaintenance: false });
+  }
+});
 
 // GET /api/store/:slug/recharge-plans
 router.get("/:slug/recharge-plans", loadBoutique, async (req, res, next) => {
