@@ -123,6 +123,10 @@ async function sendAirtimeTopup({ phone, amountKmf, amountEur, orderId, boutique
 
     if (operator && operator.operatorId) {
       payload.operatorId = operator.operatorId;
+    } else {
+      // Opérateurs officiels Comores sur Reloadly (779 = Comores Telecom Huri, 784 = Telma Yas)
+      const isTelma = localNumber.startsWith("4");
+      payload.operatorId = isTelma ? 784 : 779;
     }
 
     const res = await fetch(`${baseUrl}/topups`, {
@@ -198,10 +202,30 @@ async function dispatchRechargeIfEligible(order, boutiqueObj = null) {
     return;
   }
 
-  const dingKey = (boutiqueObj?.dingApiKey || process.env.DING_API_KEY || "").trim();
   const reloadlyId = (boutiqueObj?.reloadlyClientId || process.env.RELOADLY_CLIENT_ID || "").trim();
+  const dingKey = (boutiqueObj?.dingApiKey || process.env.DING_API_KEY || "").trim();
 
-  // 1. Priorité DingConnect si la clé Ding est renseignée
+  // 1. Priorité Reloadly si configuré
+  if (reloadlyId) {
+    console.log(`🚀 [Airtime Dispatch] Tentative d'envoi via Reloadly API...`);
+    const res = await sendAirtimeTopup({
+      phone,
+      amountKmf,
+      amountEur: order.total,
+      orderId: order.id,
+      boutique: boutiqueObj
+    });
+
+    if (res && res.success) {
+      const updatedNotes = `${order.notes || ""} | [RELOADLY AUTOMATIQUE: ENVOYÉ - TransID: ${res.transactionId}]`;
+      await order.update({ notes: updatedNotes }).catch(() => {});
+      return res;
+    } else {
+      console.warn("⚠️ [Reloadly Échec ou sans solde, repli sur Ding si dispo]:", res?.message);
+    }
+  }
+
+  // 2. Repli / Utilisation de DingConnect si configuré
   if (dingKey) {
     console.log(`🚀 [Airtime Dispatch] Tentative d'envoi via DingConnect API...`);
     const dingRes = await sendDingAirtimeTopup({
@@ -217,29 +241,7 @@ async function dispatchRechargeIfEligible(order, boutiqueObj = null) {
       await order.update({ notes: updatedNotes }).catch(() => {});
       return dingRes;
     } else {
-      console.warn("⚠️ [DingConnect Échec, repli sur Reloadly si dispo]:", dingRes?.message);
-    }
-  }
-
-  // 2. Repli / Utilisation de Reloadly si configuré
-  if (reloadlyId) {
-    console.log(`🚀 [Airtime Dispatch] Tentative d'envoi via Reloadly API...`);
-    const res = await sendAirtimeTopup({
-      phone,
-      amountKmf,
-      amountEur: order.total,
-      orderId: order.id,
-      boutique: boutiqueObj
-    });
-
-    if (res && res.success) {
-      const updatedNotes = `${order.notes || ""} | [RELOADLY AUTOMATIQUE: ENVOYÉ - TransID: ${res.transactionId}]`;
-      await order.update({ notes: updatedNotes }).catch(() => {});
-      return res;
-    } else if (res) {
-      const updatedNotes = `${order.notes || ""} | [RELOADLY INFO: ${res.message || res.reason}]`;
-      await order.update({ notes: updatedNotes }).catch(() => {});
-      return res;
+      console.warn("⚠️ [DingConnect Échec]:", dingRes?.message);
     }
   }
 
