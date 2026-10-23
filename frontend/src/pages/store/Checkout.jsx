@@ -44,7 +44,15 @@ export default function Checkout() {
   }, [user]);
 
   const defaultModes = { especes: true, mvola: true, holam: true, carte: false, wave: true, orange: true };
-  const modesPaiement = { ...defaultModes, ...(boutique?.modesPaiement || {}) };
+  const rawModes = boutique?.modesPaiement || {};
+  const modesPaiement = {
+    especes: rawModes.especes !== undefined ? !!rawModes.especes : defaultModes.especes,
+    mvola: rawModes.mvola !== undefined ? !!rawModes.mvola : defaultModes.mvola,
+    holam: rawModes.holam !== undefined ? !!rawModes.holam : defaultModes.holam,
+    carte: rawModes.carte !== undefined ? !!rawModes.carte : defaultModes.carte,
+    wave: rawModes.wave !== undefined ? !!rawModes.wave : defaultModes.wave,
+    orange: rawModes.orange !== undefined ? !!rawModes.orange : defaultModes.orange,
+  };
   const isWhatsAppEnabled = boutique?.modulesActifs?.commanderWhatsapp !== false;
 
   const PAYMENT_OPTIONS = [
@@ -111,14 +119,10 @@ export default function Checkout() {
 
   function handleSelectPayment(m) {
     if (!m.available) {
-      const availableOne = PAYMENT_OPTIONS.find(o => o.available);
       showToast(
-        `Le paiement par ${m.label} n'est pas activé sur cette boutique pour le moment.`,
+        `Le paiement par ${m.label} est bientôt disponible sur cette boutique.`,
         "info"
       );
-      if (availableOne) {
-        setForm((f) => ({ ...f, moyenPaiement: availableOne.id }));
-      }
       return;
     }
     setForm((f) => ({ ...f, moyenPaiement: m.id }));
@@ -130,6 +134,14 @@ export default function Checkout() {
       const msg = "Veuillez indiquer votre adresse de livraison complète.";
       setErreur(msg);
       showToast(msg, "error", "Adresse manquante");
+      return;
+    }
+
+    const chosenOption = PAYMENT_OPTIONS.find(p => p.id === form.moyenPaiement);
+    if (!chosenOption || !chosenOption.available) {
+      const msg = `Le moyen de paiement choisi (${chosenOption?.label || form.moyenPaiement}) est temporairement indisponible. Veuillez en sélectionner un autre.`;
+      setErreur(msg);
+      showToast(msg, "error");
       return;
     }
 
@@ -429,7 +441,7 @@ export default function Checkout() {
             {openSteps[3] && (
               <div className="bs-payment-grid">
               {PAYMENT_OPTIONS.map((m) => {
-                const isSelected = form.moyenPaiement === m.id;
+                const isSelected = form.moyenPaiement === m.id && m.available;
                 return (
                   <div
                     key={m.id}
@@ -441,9 +453,9 @@ export default function Checkout() {
                       padding: "16px 18px",
                       borderRadius: 14,
                       border: `2px solid ${isSelected ? "var(--forest)" : "var(--line)"}`,
-                      background: isSelected ? "var(--forest-light)" : m.available ? "var(--card)" : "var(--paper)",
+                      background: isSelected ? "var(--forest-light)" : m.available ? "var(--card)" : "#F8FAFC",
                       cursor: m.available ? "pointer" : "not-allowed",
-                      opacity: m.available ? 1 : 0.62,
+                      opacity: m.available ? 1 : 0.55,
                       transition: "all 0.2s",
                       position: "relative"
                     }}
@@ -467,13 +479,13 @@ export default function Checkout() {
                           {m.label}
                         </span>
                         {!m.available && (
-                          <span style={{ fontSize: 10, fontWeight: 700, background: "var(--line)", color: "var(--muted)", padding: "2px 8px", borderRadius: 8 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, background: "#F1F5F9", color: "#64748B", padding: "2px 8px", borderRadius: 8, border: "1px solid #CBD5E1" }}>
                             Bientôt disponible
                           </span>
                         )}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.sub}
+                        {m.available ? m.sub : "Ce mode de paiement est temporairement désactivé."}
                       </div>
                     </div>
                     <div style={{

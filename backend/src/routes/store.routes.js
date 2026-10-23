@@ -70,8 +70,8 @@ router.get("/:slug/manifest.json", loadBoutique, (req, res) => {
   });
 });
 
-// GET /api/store/:slug and /api/store/:slug/boutique -> infos publiques de la boutique (cached 300)
-router.get(["/:slug", "/:slug/boutique"], loadBoutique, cacheMiddleware(300), (req, res) => {
+// GET /api/store/:slug and /api/store/:slug/boutique -> infos publiques de la boutique (cached 15s)
+router.get(["/:slug", "/:slug/boutique"], loadBoutique, cacheMiddleware(15), (req, res) => {
   const b = req.boutique;
   res.json({
     id: b.id, nom: b.nom, slug: b.slug, logoUrl: b.logoUrl,
@@ -92,7 +92,7 @@ router.get(["/:slug", "/:slug/boutique"], loadBoutique, cacheMiddleware(300), (r
     tiktokUrl: b.tiktokUrl || "",
     whatsappNumber: b.whatsappNumber || "",
     modulesActifs: b.modulesActifs || { vente: true, ventesHistorique: true, achats: true, fournisseurs: true, unites: true, homeBanners: true, sideBanners: true, commandes: true },
-    modesPaiement: b.modesPaiement || { especes: true, mvola: true, holam: true, carte: false }
+    modesPaiement: b.modesPaiement || { especes: true, mvola: true, holam: true, carte: false, wave: true, orange: true }
   });
 });
 
@@ -301,6 +301,33 @@ router.post("/:slug/orders", loadBoutique, authenticate, requireRole("client"), 
     const statutInit = (moyenPaiement === "carte" || moyenPaiement === "wave" || moyenPaiement === "orange" || moyenPaiement === "paytech")
       ? "en_attente_paiement"
       : "en_attente";
+
+    // Vérifier si le mode de paiement sélectionné est activé par la boutique
+    const boutiqueModes = req.boutique.modesPaiement || {};
+    if (moyenPaiement === "wave" && boutiqueModes.wave === false) {
+      await t.rollback();
+      return res.status(400).json({ message: "Le paiement par Wave est temporairement désactivé pour cette boutique." });
+    }
+    if (moyenPaiement === "orange" && boutiqueModes.orange === false) {
+      await t.rollback();
+      return res.status(400).json({ message: "Le paiement par Orange Money est temporairement désactivé pour cette boutique." });
+    }
+    if (moyenPaiement === "carte" && boutiqueModes.carte === false) {
+      await t.rollback();
+      return res.status(400).json({ message: "Le paiement par Carte bancaire est temporairement désactivé pour cette boutique." });
+    }
+    if (moyenPaiement === "especes" && boutiqueModes.especes === false) {
+      await t.rollback();
+      return res.status(400).json({ message: "Le paiement en espèces est temporairement désactivé pour cette boutique." });
+    }
+    if (moyenPaiement === "mvola" && boutiqueModes.mvola === false) {
+      await t.rollback();
+      return res.status(400).json({ message: "Le paiement par MVola est temporairement désactivé pour cette boutique." });
+    }
+    if ((moyenPaiement === "wero" || moyenPaiement === "holam") && boutiqueModes.holam === false) {
+      await t.rollback();
+      return res.status(400).json({ message: "Le paiement par Wero est temporairement désactivé pour cette boutique." });
+    }
 
     if (moyenPaiement === "carte") {
       const stripeSecretKey = getStripeSecretKey(req.boutique);
@@ -584,6 +611,14 @@ router.post("/:slug/create-checkout-session", loadBoutique, authenticate, async 
     // ── UnitechPay : Wave & Orange Money (Sénégal) ─────────────────────────
     if (effectiveMoyen === "wave" || effectiveMoyen === "orange" || effectiveMoyen === "unitechpay" || effectiveMoyen === "paytech") {
       try {
+        const boutiqueModes = req.boutique.modesPaiement || {};
+        if (effectiveMoyen === "wave" && boutiqueModes.wave === false) {
+          return res.status(400).json({ message: "Le paiement par Wave est actuellement désactivé pour cette boutique." });
+        }
+        if (effectiveMoyen === "orange" && boutiqueModes.orange === false) {
+          return res.status(400).json({ message: "Le paiement par Orange Money est actuellement désactivé pour cette boutique." });
+        }
+
         const apiKey = getUnitechApiKey(req.boutique);
         if (!apiKey) {
           return res.status(400).json({ message: "La clé UnitechPay (UNITECH_API_KEY) n'est pas configurée. Veuillez contacter l'administrateur." });
