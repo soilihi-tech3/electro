@@ -185,10 +185,42 @@ export default function Checkout() {
           moyenPaiement: form.moyenPaiement,
           customerNumber: form.telephone || ""
         });
-        if (sessionRes.data.url) {
+
+        // Cas 1 : URL renvoyée directement par le serveur
+        if (sessionRes.data?.url) {
           clearCart();
           window.location.href = sessionRes.data.url;
           return;
+        }
+
+        // Cas 2 : Initiation sécurisée directe depuis le navigateur si Render est bloqué par Imunify360
+        if (sessionRes.data?.clientInitiated) {
+          const { endpoint, action, apiKey, payload, orderId } = sessionRes.data;
+          try {
+            const uRes = await fetch(`${endpoint}?action=${action}`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(payload)
+            });
+            const uData = await uRes.json().catch(() => ({}));
+            if (uData && uData.success && uData.data) {
+              const paymentUrl = uData.data.payment_url || uData.data.deep_links?.MAXIT || uData.data.deep_links?.OM;
+              const reference = uData.data.reference || `TXN-${orderId}-${Date.now()}`;
+              await api.post(`/store/${SLUG}/orders/${orderId}/payment-reference`, { reference }).catch(() => {});
+              if (paymentUrl) {
+                clearCart();
+                window.location.href = paymentUrl;
+                return;
+              }
+            }
+            throw new Error(uData?.message || "Échec de génération du lien UnitechPay");
+          } catch (uErr) {
+            console.error("Client UnitechPay error:", uErr);
+            throw new Error("Impossible d'initialiser le paiement sécurisé: " + (uErr.message || "Erreur réseau"));
+          }
         }
       }
 

@@ -283,9 +283,33 @@ export default function RechargeMobile() {
       if (res.data?.url) {
         window.location.href = res.data.url;
         return;
-      } else {
-        throw new Error(res.data?.message || "Lien de paiement non reçu.");
       }
+
+      // Initiation sécurisée directe depuis le navigateur si Render est bloqué par Imunify360
+      if (res.data?.clientInitiated) {
+        const { endpoint, action, apiKey, payload, orderId } = res.data;
+        const uRes = await fetch(`${endpoint}?action=${action}`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+        const uData = await uRes.json().catch(() => ({}));
+        if (uData && uData.success && uData.data) {
+          const paymentUrl = uData.data.payment_url || uData.data.deep_links?.MAXIT || uData.data.deep_links?.OM;
+          const reference = uData.data.reference || `RECHARGE-${orderId}-${Date.now()}`;
+          await api.post(`/store/${SLUG}/orders/${orderId}/payment-reference`, { reference }).catch(() => {});
+          if (paymentUrl) {
+            window.location.href = paymentUrl;
+            return;
+          }
+        }
+        throw new Error(uData?.message || "Impossible de générer le lien de paiement UnitechPay.");
+      }
+
+      throw new Error(res.data?.message || "Lien de paiement non reçu.");
     } catch (err) {
       console.error("Erreur initialisation paiement recharge:", err);
       const isMaint = err.response?.status === 503 || err.response?.data?.code === "RECHARGE_MAINTENANCE";

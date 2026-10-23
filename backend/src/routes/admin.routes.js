@@ -785,11 +785,34 @@ router.put("/boutique", requireRole("admin"), async (req, res, next) => {
       targetCustomDomain = formattedDomain || null;
     }
 
+    let cleanModesPaiement = boutique.modesPaiement;
+    if (modesPaiement !== undefined) {
+      let parsedModes = modesPaiement;
+      if (typeof parsedModes === "string") {
+        try { parsedModes = JSON.parse(parsedModes); } catch (e) { parsedModes = {}; }
+      }
+      if (parsedModes && typeof parsedModes === "object") {
+        cleanModesPaiement = {
+          especes: parsedModes.especes !== undefined ? !!parsedModes.especes : true,
+          mvola: parsedModes.mvola !== undefined ? !!parsedModes.mvola : true,
+          holam: parsedModes.holam !== undefined ? !!parsedModes.holam : true,
+          carte: parsedModes.carte !== undefined ? !!parsedModes.carte : false,
+          wave: parsedModes.wave !== undefined ? !!parsedModes.wave : false,
+          orange: parsedModes.orange !== undefined ? !!parsedModes.orange : false
+        };
+      }
+    }
+
+    if (cleanModesPaiement) {
+      boutique.set("modesPaiement", cleanModesPaiement);
+      boutique.changed("modesPaiement", true);
+    }
+
     await boutique.update({ 
       nom, logoUrl, couleurPrincipale, devise: devise || boutique.devise || "KMF", fraisLivraison, zonesLivraison, 
       bannerSlides, sideBanners, telephone, telephone2, adresse, adresse2, adresseRetrait, 
       emailContact, aProposText, aProposImageUrl, horairesOuverture, facebookUrl, instagramUrl, 
-      tiktokUrl, whatsappNumber, modesPaiement, modulesActifs,
+      tiktokUrl, whatsappNumber, modesPaiement: cleanModesPaiement, modulesActifs,
       customDomain: targetCustomDomain,
       ...(stripePublishableKey !== undefined && { stripePublishableKey }),
       ...(stripeSecretKey !== undefined && { stripeSecretKey }),

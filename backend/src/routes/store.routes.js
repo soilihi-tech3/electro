@@ -403,6 +403,21 @@ router.post("/:slug/orders", loadBoutique, authenticate, requireRole("client"), 
     next(err);
   }
 });
+
+// POST /api/store/:slug/orders/:id/payment-reference (Associer la référence UnitechPay à la commande)
+router.post("/:slug/orders/:id/payment-reference", loadBoutique, authenticate, async (req, res, next) => {
+  try {
+    const { reference } = req.body;
+    if (!reference) return res.status(400).json({ message: "Référence requise" });
+    const order = await Order.findOne({
+      where: { id: req.params.id, boutiqueId: req.boutique.id }
+    });
+    if (!order) return res.status(404).json({ message: "Commande introuvable" });
+    await order.update({ stripeSessionId: reference });
+    return res.json({ success: true, orderId: order.id, reference });
+  } catch (err) { next(err); }
+});
+
 // POST /api/store/:slug/orders/:id/verify-payment (Vérifier le paiement Stripe côté serveur si le webhook est en retard)
 router.post("/:slug/orders/:id/verify-payment", loadBoutique, authenticate, async (req, res, next) => {
   try {
@@ -632,38 +647,59 @@ router.post("/:slug/create-checkout-session", loadBoutique, authenticate, async 
         const amount = Math.round(Number(order.total));
 
         let result = null;
-        if (effectiveMoyen === "orange") {
-          result = await createOrangePayment({
-            amount,
-            customerNumber,
-            description,
-            successUrl,
-            cancelUrl,
-            apiKey
-          });
-        } else {
-          // Wave par défaut
-          result = await createWavePayment({
-            amount,
-            customerNumber,
-            description,
-            successUrl,
-            cancelUrl,
-            apiKey
+        try {
+          if (effectiveMoyen === "orange") {
+            result = await createOrangePayment({
+              amount,
+              customerNumber,
+              description,
+              successUrl,
+              cancelUrl,
+              apiKey
+            });
+          } else {
+            // Wave par défaut
+            result = await createWavePayment({
+              amount,
+              customerNumber,
+              description,
+              successUrl,
+              cancelUrl,
+              apiKey
+            });
+          }
+
+          if (result && result.success && result.data) {
+            const paymentUrl = result.data.payment_url || result.data.deep_links?.MAXIT || result.data.deep_links?.OM;
+            const reference = result.data.reference || `TXN-${order.id}-${Date.now()}`;
+
+            // Sauvegarde de la référence unique UnitechPay pour réconciliation webhook
+            await order.update({ stripeSessionId: reference });
+            return res.json({ url: paymentUrl, reference });
+          }
+        } catch (serverErr) {
+          console.warn("⚠️ UnitechPay server call blocked (Imunify360 or network), using client-side direct initiation:", serverErr.message);
+          // Si le serveur cloud Render est bloqué par Imunify360 bot-protection,
+          // on bascule immédiatement sur l'initiation directe côté client (qui a une IP résidentielle et CORS autorisé)
+          return res.json({
+            clientInitiated: true,
+            action: effectiveMoyen === "orange" ? "create_orange_om" : "create_wave_payment",
+            endpoint: "https://api.unitech.sn/api.php",
+            orderId: order.id,
+            apiKey,
+            payload: {
+              amount,
+              customer_number: String(customerNumber || "").replace(/[^0-9]/g, ""),
+              description,
+              callback_success: successUrl,
+              callback_cancel: cancelUrl
+            }
           });
         }
 
-        if (result && result.success && result.data) {
-          const paymentUrl = result.data.payment_url || result.data.deep_links?.MAXIT || result.data.deep_links?.OM;
-          const reference = result.data.reference || `TXN-${order.id}-${Date.now()}`;
-
-          // Sauvegarde de la référence unique UnitechPay pour réconciliation webhook
-          await order.update({ stripeSessionId: reference });
-          return res.json({ url: paymentUrl, reference });
-        } else {
-          console.error("❌ UnitechPay Error:", result);
-          return res.status(400).json({ message: "Erreur UnitechPay: " + (result?.message || "Impossible de générer le lien de paiement.") });
-        }
+        // Si le résultat n'est pas un succès
+        console.error("❌ UnitechPay API Error:", result);
+        return res.status(400).json({ message: "Erreur UnitechPay: " + (result?.message || "Impossible de générer le lien de paiement.") });
       } catch (err) {
         console.error("❌ UnitechPay Exception:", err);
         return res.status(500).json({ message: "Erreur lors de la création du paiement UnitechPay: " + err.message });
@@ -834,39 +870,58 @@ router.post("/:slug/create-recharge-session", loadBoutique, authenticate, async 
         const amountXof = Math.round(Number(amountEur) * 655);
 
         let result = null;
-        if (moyenPaiement === "orange") {
-          result = await createOrangePayment({
-            amount: amountXof,
-            customerNumber: cleanPhone,
-            description,
-            successUrl,
-            cancelUrl,
-            apiKey
-          });
-        } else {
-          result = await createWavePayment({
-            amount: amountXof,
-            customerNumber: cleanPhone,
-            description,
-            successUrl,
-            cancelUrl,
-            apiKey
+        try {
+          if (moyenPaiement === "orange") {
+            result = await createOrangePayment({
+              amount: amountXof,
+              customerNumber: cleanPhone,
+              description,
+              successUrl,
+              cancelUrl,
+              apiKey
+            });
+          } else {
+            result = await createWavePayment({
+              amount: amountXof,
+              customerNumber: cleanPhone,
+              description,
+              successUrl,
+              cancelUrl,
+              apiKey
+            });
+          }
+
+          if (result && result.success && result.data) {
+            const paymentUrl = result.data.payment_url || result.data.deep_links?.MAXIT || result.data.deep_links?.OM;
+            const reference = result.data.reference || `RECHARGE-${order.id}-${Date.now()}`;
+
+            await order.update({ stripeSessionId: reference });
+            return res.json({ url: paymentUrl, reference, orderId: order.id });
+          }
+        } catch (serverErr) {
+          console.warn("⚠️ UnitechPay Recharge server call blocked (Imunify360 or network), using client-side direct initiation:", serverErr.message);
+          return res.json({
+            clientInitiated: true,
+            action: moyenPaiement === "orange" ? "create_orange_om" : "create_wave_payment",
+            endpoint: "https://api.unitech.sn/api.php",
+            orderId: order.id,
+            apiKey,
+            payload: {
+              amount: amountXof,
+              customer_number: cleanPhone,
+              description,
+              callback_success: successUrl,
+              callback_cancel: cancelUrl
+            }
           });
         }
 
-        if (result && result.success && result.data) {
-          const paymentUrl = result.data.payment_url || result.data.deep_links?.MAXIT || result.data.deep_links?.OM;
-          const reference = result.data.reference || `RECHARGE-${order.id}-${Date.now()}`;
-
-          await order.update({ stripeSessionId: reference });
-          return res.json({ url: paymentUrl, reference });
-        } else {
-          console.error("❌ UnitechPay Recharge Error:", result);
-          return res.status(400).json({ message: "Erreur UnitechPay: " + (result?.message || "Impossible de générer le lien de recharge.") });
-        }
+        // Si le résultat n'est pas un succès
+        console.error("❌ UnitechPay Recharge API Error:", result);
+        return res.status(400).json({ message: "Erreur UnitechPay: " + (result?.message || "Impossible de générer le lien de recharge.") });
       } catch (err) {
-        console.error("❌ UnitechPay Recharge Error:", err);
-        return res.status(500).json({ message: "Erreur lors de la création du lien de paiement UnitechPay." });
+        console.error("❌ UnitechPay Recharge Exception:", err);
+        return res.status(500).json({ message: "Erreur lors de la création du lien de paiement UnitechPay: " + err.message });
       }
     }
 

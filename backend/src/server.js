@@ -99,7 +99,26 @@ app.use("/uploads", express.static(uploadsPath, {
 
 // Root Endpoint Health Check
 app.get("/", (req, res) => res.json({ message: "API Boutique SaaS Comores Biachara en ligne.", status: "ok" }));
-app.get("/api/health", (req, res) => res.json({ status: "ok", version: "2.0.0-cors-fix" }));
+app.get("/api/health", (req, res) => res.json({ status: "ok", version: "2.2.0-unitech-fallback", timestamp: new Date().toISOString() }));
+
+// Diagnostic UnitechPay & Outbound IP
+app.get("/api/test-unitech", async (req, res) => {
+  try {
+    const { getBalance } = require("./services/unitechPayService");
+    const ipRes = await fetch("https://api.ipify.org?format=json", { signal: AbortSignal.timeout(4000) })
+      .then(r => r.json())
+      .catch(e => ({ ip: "inconnu (" + e.message + ")" }));
+    const balance = await getBalance();
+    res.json({ success: true, outboundIp: ipRes.ip, balance });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      status: err.status,
+      details: err.details
+    });
+  }
+});
 
 // Public current boutique resolver endpoint (subdomain / header multi-tenant)
 app.get("/api/boutique/current", (req, res) => {
