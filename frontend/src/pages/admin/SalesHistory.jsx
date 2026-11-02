@@ -1,14 +1,17 @@
 import { SkeletonTableRows } from "../../components/Skeleton.jsx";
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Search, FileText, Download, Printer, Eye, Calendar, DollarSign, 
-  CreditCard, Smartphone, CheckCircle, User, ShoppingBag, History, X, Building
+  CreditCard, Smartphone, CheckCircle, User, ShoppingBag, History, X, Building, AlertTriangle,
+  Edit2, Trash2, ArrowRight, MessageCircle, Bell
 } from "lucide-react";
+import { toast } from "react-hot-toast";
 import api from "../../api";
 import TablePagination from "../../components/TablePagination.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { subscribeRealtime } from "../../utils/realtime.js";
-import ReceiptModal from "../../components/ReceiptModal.jsx";
+import InvoiceModal from "../../components/InvoiceModal.jsx";
 
 import { formatPrice as fcfa } from "../../utils/currency.js";
 
@@ -28,7 +31,8 @@ const MONTHS = [
 ];
 
 export default function SalesHistory() {
-  const { user, boutique } = useAuth();
+  const { user, boutique, hasPerm } = useAuth();
+  const navigate = useNavigate();
   const storeName = boutique?.nom || "Marché Vert";
   const [orders, setOrders] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -38,13 +42,25 @@ export default function SalesHistory() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("tous"); // "tous" | "vente_directe" | "commande_enligne"
   const [filterPaiement, setFilterPaiement] = useState("tous"); // "tous" | "cash" | "mvola" | "wero" | "carte"
+  const [filterStatutPaiement, setFilterStatutPaiement] = useState("tous"); // "tous" | "paye" | "partiel" | "non_paye"
   const [filterEmploye, setFilterEmploye] = useState("tous");
   const [filterAnnee, setFilterAnnee] = useState(new Date().getFullYear().toString());
   const [filterMois, setFilterMois] = useState("");
   const [isTodayOnly, setIsTodayOnly] = useState(false);
 
-  // Detail Modal
+  // Detail Modal (Facture A4)
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Payment Modal (Régler solde / Encaisser versement)
+  const [paymentModalOrder, setPaymentModalOrder] = useState(null);
+  const [versementMontant, setVersementMontant] = useState("");
+  const [versementMoyen, setVersementMoyen] = useState("cash");
+  const [versementLoading, setVersementLoading] = useState(false);
+
+  // Edit Modal (Modifier vente)
+  const [editModalOrder, setEditModalOrder] = useState(null);
+  const [editForm, setEditForm] = useState({ adresseLivraison: "", moyenPaiement: "cash", notesAdmin: "" });
+  const [editLoading, setEditLoading] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,6 +90,10 @@ export default function SalesHistory() {
 
   // Filter logic
   const filteredOrders = orders.filter((o) => {
+    // Exclure expressément les devis proforma de l'historique des ventes
+    const isDevis = o.typeDocument === "devis" || o.statut === "devis" || o.typeVente === "devis" || o.moyenPaiement === "devis";
+    if (isDevis) return false;
+
     // Type detection
     const isRecharge = o.typeVente === "recharge_mobile" || o.notes?.includes("recharge_mobile") || o.items?.some(it => it.product?.nom?.toLowerCase().includes("recharge"));
     const isPOS = !isRecharge && (o.typeVente === "vente_directe" || o.adresseLivraison?.includes("Achat direct") || o.modeLivraison === "retrait");
@@ -91,6 +111,16 @@ export default function SalesHistory() {
       if (filterPaiement === "mvola" && p !== "mvola") return false;
       if (filterPaiement === "wero" && p !== "wero" && p !== "holam") return false;
       if (filterPaiement === "carte" && p !== "carte") return false;
+    }
+
+    // Statut de paiement filter
+    if (filterStatutPaiement !== "tous") {
+      const rest = Number(o.montantRestant !== undefined ? o.montantRestant : (o.statutPaiement === "paye" ? 0 : o.total));
+      const recu = Number(o.montantRecu !== undefined ? o.montantRecu : (o.statutPaiement === "paye" ? o.total : 0));
+      const st = o.statutPaiement || (rest <= 0 ? "paye" : recu > 0 ? "partiel" : "non_paye");
+      if (filterStatutPaiement === "paye" && st !== "paye") return false;
+      if (filterStatutPaiement === "partiel" && st !== "partiel") return false;
+      if (filterStatutPaiement === "non_paye" && st !== "non_paye") return false;
     }
 
     // Employe filter
@@ -130,7 +160,7 @@ export default function SalesHistory() {
     return true;
   });
 
-  // Calculate totals for KPI cards
+  // Calculate totals for KPI cards (Suppression carte, wero et achat crédit demandée par le client)
   const totalCash = filteredOrders
     .filter(o => o.moyenPaiement === "cash" || o.moyenPaiement === "especes")
     .reduce((sum, o) => sum + Number(o.total || 0), 0);
@@ -139,22 +169,16 @@ export default function SalesHistory() {
     .filter(o => o.moyenPaiement === "mvola")
     .reduce((sum, o) => sum + Number(o.total || 0), 0);
 
-  const totalWero = filteredOrders
-    .filter(o => o.moyenPaiement === "wero" || o.moyenPaiement === "holam")
-    .reduce((sum, o) => sum + Number(o.total || 0), 0);
-
-  const totalCarte = filteredOrders
-    .filter(o => o.moyenPaiement === "carte")
-    .reduce((sum, o) => sum + Number(o.total || 0), 0);
-
-  const totalAchatCredit = filteredOrders
-    .filter(o => o.typeVente === "recharge_mobile" || o.notes?.includes("recharge_mobile") || o.items?.some(it => it.product?.nom?.toLowerCase().includes("recharge")))
-    .reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const totalCreditsEnCours = filteredOrders
+    .reduce((sum, o) => {
+      const rest = Number(o.montantRestant !== undefined ? o.montantRestant : (o.statutPaiement === "paye" ? 0 : o.total));
+      return sum + (rest > 0 ? rest : 0);
+    }, 0);
 
   const totalGlobal = filteredOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
 
   // Reset page
-  useEffect(() => { setCurrentPage(1); }, [search, filterType, filterPaiement, filterEmploye, filterAnnee, filterMois, isTodayOnly]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterType, filterPaiement, filterStatutPaiement, filterEmploye, filterAnnee, filterMois, isTodayOnly]);
 
   const totalItems = filteredOrders.length;
   const paginatedOrders = filteredOrders.slice(
@@ -201,6 +225,100 @@ export default function SalesHistory() {
     window.print();
   }
 
+  // SUPPRIMER UNE VENTE
+  async function handleDeleteSale(o) {
+    const num = `COM-B${String(o.id).padStart(3, "0")}`;
+    if (!window.confirm(`Supprimer définitivement la vente #${num} ?\nLes articles vendus seront automatiquement réintégrés en stock.`)) {
+      return;
+    }
+    try {
+      await api.delete(`/admin/orders/${o.id}`);
+      toast.success("Vente supprimée et stocks réintégrés avec succès.");
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression de la vente.");
+    }
+  }
+
+  // RÉGLER LE SOLDE / VERSEMENT COMPLÉMENTAIRE
+  function openPaymentModal(o) {
+    const rest = Number(o.montantRestant !== undefined ? o.montantRestant : (o.statutPaiement === "paye" ? 0 : o.total));
+    setPaymentModalOrder(o);
+    setVersementMontant(String(rest > 0 ? rest : ""));
+    setVersementMoyen(o.moyenPaiement === "mvola" ? "mvola" : "cash");
+  }
+
+  async function handleValiderVersement(e) {
+    e.preventDefault();
+    if (!versementMontant || isNaN(versementMontant) || Number(versementMontant) <= 0) {
+      toast.error("Veuillez saisir un montant de versement supérieur à 0.");
+      return;
+    }
+    setVersementLoading(true);
+    try {
+      await api.put(`/admin/orders/${paymentModalOrder.id}`, {
+        versementComplementaire: Number(versementMontant),
+        moyenPaiement: versementMoyen
+      });
+      toast.success("Paiement complémentaire enregistré avec succès !");
+      setPaymentModalOrder(null);
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement du versement.");
+    } finally {
+      setVersementLoading(false);
+    }
+  }
+
+  // MODIFIER LA VENTE (Redirige vers la caisse pour les ventes directes)
+  function handleEditSale(o) {
+    const isRecharge = o.typeVente === "recharge_mobile" || o.notes?.includes("recharge_mobile");
+    const isPOS = !isRecharge && (o.typeVente === "vente_directe" || o.adresseLivraison?.includes("Achat direct") || o.modeLivraison === "retrait");
+
+    if (isPOS) {
+      navigate(`/admin/vente?modifierVenteId=${o.id}`);
+    } else {
+      toast("Seules les ventes directes de caisse peuvent être ajustées dans le panier POS. Les commandes en ligne se gèrent via l'onglet Commandes.", {
+        icon: "ℹ️"
+      });
+    }
+  }
+
+  // RAPPEL WHATSAPP POUR LES FACTURES EN DETTE / RETARD
+  function handleSendWhatsAppReminder(o) {
+    const rawPhone = o.client?.telephone || "";
+    const cleanPhone = rawPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone === "non_renseigne") {
+      toast.error(`Aucun numéro de téléphone valide n'est enregistré pour ${o.client?.nom || "ce client"}.`);
+      return;
+    }
+    const rest = Number(o.montantRestant !== undefined ? o.montantRestant : (o.statutPaiement === "paye" ? 0 : o.total));
+    const numFacture = `#COM-B${String(o.id).padStart(3, "0")}`;
+    const echeanceStr = o.dateEcheance ? ` (date limite d'échéance : ${new Date(o.dateEcheance).toLocaleDateString("fr-FR")})` : "";
+    
+    let formattedPhone = cleanPhone;
+    if (cleanPhone.length === 7) {
+      formattedPhone = `269${cleanPhone}`;
+    }
+
+    const message = `Bonjour ${o.client?.nom || "cher client"},\n\nNous vous contactons de la part de ${storeName} concernant votre facture ${numFacture}.\nUn montant restant de ${fcfa(rest, boutique?.devise)} est en attente de règlement${echeanceStr}.\n\nMerci de bien vouloir passer à la boutique pour régulariser votre situation.\n\nCordialement,\n${storeName}`;
+
+    window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(message)}`, "_blank");
+    toast.success("Discussion WhatsApp ouverte pour le rappel de facture.");
+  }
+
+  // Liste des factures avec échéance dépassée et reste à payer > 0 (hors devis proforma)
+  const overdueSales = orders.filter((o) => {
+    const isDevis = o.typeDocument === "devis" || o.statut === "devis" || o.typeVente === "devis" || o.moyenPaiement === "devis";
+    if (isDevis) return false;
+    const rest = Number(o.montantRestant !== undefined ? o.montantRestant : (o.statutPaiement === "paye" ? 0 : o.total));
+    if (rest <= 0) return false;
+    if (!o.dateEcheance) return false;
+    const ech = new Date(o.dateEcheance);
+    ech.setHours(23, 59, 59, 999);
+    return ech < new Date();
+  });
+
   return (
     <>
       {/* HEADER PAGE */}
@@ -229,6 +347,42 @@ export default function SalesHistory() {
           </button>
         </div>
       </div>
+
+      {/* NOTIFICATION D'ALERTE : CRÉANCES & ÉCHÉANCES DÉPASSÉES */}
+      {overdueSales.length > 0 && (
+        <div style={{
+          background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: 14, padding: "14px 18px",
+          display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20,
+          boxShadow: "0 2px 10px rgba(220, 38, 38, 0.08)", flexWrap: "wrap", gap: 14
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              width: 42, height: 42, borderRadius: 10, background: "#FEE2E2",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+            }}>
+              <AlertTriangle size={22} color="#DC2626" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, color: "#991B1B", fontSize: 14 }}>
+                Alerte Recouvrement : {overdueSales.length} facture{overdueSales.length > 1 ? "s ont" : " a"} dépassé la date d'échéance !
+              </div>
+              <div style={{ fontSize: 12.5, color: "#7F1D1D", marginTop: 2 }}>
+                Ces clients ont des créances impayées échues. Utilisez l'icône WhatsApp verte dans les actions pour leur envoyer un rappel immédiat.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setFilterStatutPaiement("non_paye")}
+            style={{
+              background: "#DC2626", color: "#fff", border: "none", borderRadius: 8,
+              padding: "8px 16px", fontSize: 12.5, fontWeight: 800, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6
+            }}
+          >
+            <Bell size={14} /> Filtrer les impayés ({overdueSales.length})
+          </button>
+        </div>
+      )}
 
       {/* FILTER BAR ROW */}
       <div className="bs-panel" style={{ padding: 16, marginBottom: 20 }}>
@@ -270,6 +424,19 @@ export default function SalesHistory() {
             <option value="mvola">MVola</option>
             <option value="wero">Wero</option>
             <option value="carte">Carte Bancaire</option>
+          </select>
+
+          {/* FILTER: STATUT DE PAIEMENT */}
+          <select
+            className="bs-select"
+            style={{ flex: 1, minWidth: 160, height: 40, fontWeight: 600 }}
+            value={filterStatutPaiement}
+            onChange={(e) => setFilterStatutPaiement(e.target.value)}
+          >
+            <option value="tous">Tous statuts de paiement</option>
+            <option value="paye">Payé (Intégralement)</option>
+            <option value="partiel">Paiement partiel (Acompte)</option>
+            <option value="non_paye">Non payé (À crédit)</option>
           </select>
 
           {/* FILTER: EMPLOYÉ */}
@@ -325,65 +492,55 @@ export default function SalesHistory() {
         </div>
       </div>
 
-      {/* KPI SUMMARY CARDS (6 CARDS) */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14, marginBottom: 20 }}>
-        {/* TOTAL CASH */}
-        <div className="bs-panel" style={{ padding: 16, background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#166534", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
-            <DollarSign size={15} /> TOTAL CASH
+      {/* KPI SUMMARY CARDS (5 CARDS DYNAMIQUES: NB VENTES, CASH, MVOLA, RESTE À RECOUVRER, TOTAL GLOBAL) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 20 }}>
+        {/* NOMBRE TOTAL DE VENTES */}
+        <div className="bs-panel" style={{ padding: 18, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#475569", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
+            <ShoppingBag size={16} color="var(--forest)" /> NB TOTAL VENTES
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#15803D", marginTop: 6 }}>
-            {fcfa(totalCash)}
+          <div style={{ fontSize: 24, fontWeight: 900, color: "var(--forest-dark)", marginTop: 6 }}>
+            {filteredOrders.length} <span style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>vente(s)</span>
+          </div>
+        </div>
+
+        {/* TOTAL CASH */}
+        <div className="bs-panel" style={{ padding: 18, background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#166534", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
+            <DollarSign size={16} /> TOTAL CASH
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#15803D", marginTop: 6 }}>
+            {fcfa(totalCash, boutique?.devise)}
           </div>
         </div>
 
         {/* TOTAL MVOLA */}
-        <div className="bs-panel" style={{ padding: 16, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 14 }}>
+        <div className="bs-panel" style={{ padding: 18, background: "#ECFDF5", border: "1px solid #A7F3D0", borderRadius: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#047857", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
-            <Smartphone size={15} /> TOTAL MVOLA
+            <Smartphone size={16} /> TOTAL MVOLA
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#059669", marginTop: 6 }}>
-            {fcfa(totalMvola)}
-          </div>
-        </div>
-
-        {/* TOTAL WERO */}
-        <div className="bs-panel" style={{ padding: 16, background: "#FEFCE8", border: "1px solid #FEF08A", borderRadius: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#854D0E", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
-            <Smartphone size={15} /> TOTAL WERO
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#CA8A04", marginTop: 6 }}>
-            {fcfa(totalWero)}
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#059669", marginTop: 6 }}>
+            {fcfa(totalMvola, boutique?.devise)}
           </div>
         </div>
 
-        {/* TOTAL CARTE */}
-        <div className="bs-panel" style={{ padding: 16, background: "#F5F3FF", border: "1px solid #DDD6FE", borderRadius: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#6D28D9", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
-            <CreditCard size={15} /> TOTAL CARTE
+        {/* RESTE À RECOUVRER (DYNAMIQUE PAR EMPLOYÉ ET FILTRES) */}
+        <div className="bs-panel" style={{ padding: 18, background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#991B1B", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
+            <AlertTriangle size={16} color="#DC2626" /> RESTE À RECOUVRER {filterEmploye !== "tous" && employees.find(e => String(e.id) === String(filterEmploye)) ? `(${employees.find(e => String(e.id) === String(filterEmploye)).nom})` : ""}
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#7C3AED", marginTop: 6 }}>
-            {fcfa(totalCarte)}
-          </div>
-        </div>
-
-        {/* TOTAL ACHAT CRÉDIT */}
-        <div className="bs-panel" style={{ padding: 16, background: "#E0F2FE", border: "1px solid #BAE6FD", borderRadius: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#0369A1", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
-            <Smartphone size={15} color="#0284C7" /> ACHAT CRÉDIT
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#0284C7", marginTop: 6 }}>
-            {fcfa(totalAchatCredit)}
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#DC2626", marginTop: 6 }}>
+            {fcfa(totalCreditsEnCours, boutique?.devise)}
           </div>
         </div>
 
         {/* TOTAL GLOBAL */}
-        <div className="bs-panel" style={{ padding: 16, background: "var(--forest-light)", border: "1px solid #A7F3D0", borderRadius: 14 }}>
+        <div className="bs-panel" style={{ padding: 18, background: "var(--forest-light)", border: "1px solid #A7F3D0", borderRadius: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--forest-dark)", fontSize: 11.5, fontWeight: 800, textTransform: "uppercase" }}>
-            <ShoppingBag size={15} /> TOTAL GLOBAL
+            <ShoppingBag size={16} /> TOTAL GLOBAL VENTES
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "var(--forest-dark)", marginTop: 6 }}>
-            {fcfa(totalGlobal)}
+          <div style={{ fontSize: 24, fontWeight: 900, color: "var(--forest-dark)", marginTop: 6 }}>
+            {fcfa(totalGlobal, boutique?.devise)}
           </div>
         </div>
       </div>
@@ -399,17 +556,18 @@ export default function SalesHistory() {
               <th>TYPE</th>
               <th>EMPLOYÉ</th>
               <th>PAIEMENT</th>
+              <th>STATUT</th>
               <th>MONTANT</th>
               <th>ACTIONS</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <SkeletonTableRows rows={6} cols={8} />
+              <SkeletonTableRows rows={6} cols={9} />
             )}
             {!loading && paginatedOrders.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
+                <td colSpan={9} style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
                   Aucune vente enregistrée pour les filtres sélectionnés.
                 </td>
               </tr>
@@ -430,11 +588,35 @@ export default function SalesHistory() {
               const isMvola = o.moyenPaiement === "mvola";
               const isWero = o.moyenPaiement === "wero" || o.moyenPaiement === "holam";
 
+              const rest = Number(o.montantRestant !== undefined ? o.montantRestant : (o.statutPaiement === "paye" ? 0 : o.total));
+              const recu = Number(o.montantRecu !== undefined ? o.montantRecu : (o.statutPaiement === "paye" ? o.total : 0));
+              const isPaye = o.statutPaiement === "paye" || rest <= 0;
+              const isPartiel = o.statutPaiement === "partiel" || (recu > 0 && rest > 0);
+
+              const isOverdue = rest > 0 && o.dateEcheance && (() => {
+                const ech = new Date(o.dateEcheance);
+                ech.setHours(23, 59, 59, 999);
+                return ech < new Date();
+              })();
+
               return (
                 <tr key={o.id}>
                   <td style={{ fontSize: 12.5, whiteSpace: "nowrap" }}>
                     <div style={{ fontWeight: 700, color: "var(--ink)" }}>{dateFormatted}</div>
                     <div style={{ fontSize: 11, color: "var(--muted)" }}>#COM-B{String(o.id).padStart(3, "0")}</div>
+                    {o.dateEcheance && rest > 0 && (
+                      <div style={{ 
+                        fontSize: 10.5, 
+                        fontWeight: 700, 
+                        color: isOverdue ? "#DC2626" : "#D97706",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 3,
+                        marginTop: 3
+                      }}>
+                        <Calendar size={11} /> Échéance : {new Date(o.dateEcheance).toLocaleDateString("fr-FR")}
+                      </div>
+                    )}
                   </td>
                   <td>
                     <div style={{ fontWeight: 700, color: "var(--ink)" }}>{o.client?.nom || "Client comptoir"}</div>
@@ -486,17 +668,143 @@ export default function SalesHistory() {
                       {isCash ? "Cash / Espèces" : isMvola ? "MVola" : isWero ? "Wero" : "Carte"}
                     </span>
                   </td>
-                  <td style={{ fontWeight: 800, fontSize: 14, color: "var(--forest-dark)", whiteSpace: "nowrap" }}>
-                    {fcfa(o.total)}
-                  </td>
                   <td>
-                    <button
-                      className="bs-icon-btn"
-                      title="Voir le reçu / ticket de caisse"
-                      onClick={() => setSelectedOrder(o)}
-                    >
-                      <Eye size={16} />
-                    </button>
+                    {isPaye ? (
+                      <span style={{ background: "#DCFCE7", color: "#166534", padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap" }}>
+                        Payé
+                      </span>
+                    ) : isPartiel ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span style={{ background: "#FEF3C7", color: "#B45309", padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          Partiel (Reste {fcfa(rest, boutique?.devise)})
+                        </span>
+                        {o.dateEcheance && (
+                          <span style={{ 
+                            fontSize: 10.5, 
+                            fontWeight: 700, 
+                            color: isOverdue ? "#DC2626" : "#B45309",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3
+                          }}>
+                            <Calendar size={10} /> Échéance : {new Date(o.dateEcheance).toLocaleDateString("fr-FR")}
+                          </span>
+                        )}
+                        {isOverdue && (
+                          <span style={{ background: "#FEE2E2", color: "#DC2626", padding: "2px 8px", borderRadius: 12, fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                            <AlertTriangle size={10} /> Échéance dépassée
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <span style={{ background: "#FEE2E2", color: "#991B1B", padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 800, whiteSpace: "nowrap" }}>
+                          Non payé / Crédit
+                        </span>
+                        {o.dateEcheance && (
+                          <span style={{ 
+                            fontSize: 10.5, 
+                            fontWeight: 700, 
+                            color: isOverdue ? "#DC2626" : "#B45309",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 3
+                          }}>
+                            <Calendar size={10} /> Échéance : {new Date(o.dateEcheance).toLocaleDateString("fr-FR")}
+                          </span>
+                        )}
+                        {isOverdue && (
+                          <span style={{ background: "#FEE2E2", color: "#DC2626", padding: "2px 8px", borderRadius: 12, fontSize: 10, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                            <AlertTriangle size={10} /> Échéance dépassée
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ fontWeight: 800, fontSize: 14, color: "var(--forest-dark)", whiteSpace: "nowrap" }}>
+                    {fcfa(o.total, boutique?.devise)}
+                  </td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {/* 1. VOIR / IMPRIMER FACTURE */}
+                      <button
+                        className="bs-icon-btn"
+                        title="Voir / Imprimer la Facture officielle (A4)"
+                        onClick={() => setSelectedOrder(o)}
+                        style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        <Eye size={15} />
+                      </button>
+
+                      {/* 2. RÉALISER UN PAIEMENT / COMPLÉTER LE PAIEMENT (DÉSACTIVÉ SI DÉJÀ PAYÉ OU NON AUTORISÉ) */}
+                      {hasPerm("encaisser_paiement") && (
+                        <button
+                          className="bs-icon-btn"
+                          disabled={isPaye}
+                          title={isPaye ? "Vente entièrement soldée (aucun versement restant)" : `Encaisser un versement (${fcfa(rest, boutique?.devise)} restant)`}
+                          onClick={() => !isPaye && openPaymentModal(o)}
+                          style={{
+                            width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                            background: isPaye ? "#F1F5F9" : "#DCFCE7",
+                            color: isPaye ? "#94A3B8" : "#15803D",
+                            border: isPaye ? "1px solid #E2E8F0" : "1px solid #86EFAC",
+                            cursor: isPaye ? "not-allowed" : "pointer",
+                            opacity: isPaye ? 0.35 : 1,
+                            pointerEvents: isPaye ? "none" : "auto"
+                          }}
+                        >
+                          <DollarSign size={15} />
+                        </button>
+                      )}
+
+                      {/* 3. RAPPEL WHATSAPP (SI CRÉANCE / RESTE > 0) */}
+                      {rest > 0 && (
+                        <button
+                          className="bs-icon-btn"
+                          title={`Envoyer un rappel de paiement WhatsApp à ${o.client?.nom || "ce client"}`}
+                          onClick={() => handleSendWhatsAppReminder(o)}
+                          style={{
+                            width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                            background: "#DCFCE7", color: "#16A34A", border: "1px solid #86EFAC", cursor: "pointer"
+                          }}
+                        >
+                          <MessageCircle size={15} />
+                        </button>
+                      )}
+
+                      {/* 4. MODIFIER LA VENTE (RAMÈNE SUR LA CAISSE SI VENTE DIRECTE) */}
+                      {hasPerm("modifier_vente") && (
+                        <button
+                          className="bs-icon-btn"
+                          title={isPOS ? "Modifier cette vente sur la caisse (ajuster panier, articles, montants)" : "Commande en ligne (gérée dans Commandes)"}
+                          onClick={() => handleEditSale(o)}
+                          style={{
+                            width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                            color: isPOS ? "var(--forest)" : "#94A3B8",
+                            background: isPOS ? "#F0FDF4" : "#F8FAFC",
+                            border: isPOS ? "1px solid #BBF7D0" : "1px solid #E2E8F0",
+                            cursor: isPOS ? "pointer" : "not-allowed"
+                          }}
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                      )}
+
+                      {/* 5. SUPPRIMER LA VENTE */}
+                      {hasPerm("supprimer_vente") && (
+                        <button
+                          className="bs-icon-btn"
+                          title="Supprimer cette vente (réintègre les articles en stock)"
+                          onClick={() => handleDeleteSale(o)}
+                          style={{
+                            width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                            color: "#DC2626", background: "#FEF2F2", border: "1px solid #FECACA"
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -514,9 +822,223 @@ export default function SalesHistory() {
         />
       </div>
 
-      {/* MODAL REÇU / TICKET DE CAISSE AUTHENTIQUE */}
+      {/* MODAL ENCAISSEMENT / RÈGLEMENT DU SOLDE */}
+      {paymentModalOrder && (
+        <div 
+          onClick={() => setPaymentModalOrder(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#FFFFFF", borderRadius: 16, maxWidth: 440, width: "100%",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.2)", overflow: "hidden"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "var(--forest)", color: "#fff" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 15 }}>
+                <DollarSign size={18} /> Réaliser un Paiement / Règlement
+              </div>
+              <button onClick={() => setPaymentModalOrder(null)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleValiderVersement} style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* RÉCAP VENTE */}
+              <div style={{ background: "#F8FAFC", borderRadius: 10, padding: 12, border: "1px solid var(--line)", fontSize: 13, display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>N° Vente :</span>
+                  <span style={{ fontWeight: 800 }}>#COM-B{String(paymentModalOrder.id).padStart(3, "0")}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Client :</span>
+                  <span style={{ fontWeight: 700 }}>{paymentModalOrder.client?.nom || "Client comptoir"}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Total Vente :</span>
+                  <span style={{ fontWeight: 800, color: "var(--forest-dark)" }}>{fcfa(paymentModalOrder.total, boutique?.devise)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Déjà encaissé :</span>
+                  <span style={{ fontWeight: 700, color: "#166534" }}>{fcfa(paymentModalOrder.montantRecu || 0, boutique?.devise)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--line)", paddingTop: 6, marginTop: 2 }}>
+                  <span style={{ color: "#DC2626", fontWeight: 800 }}>Reste à payer actuel :</span>
+                  <span style={{ fontWeight: 900, color: "#DC2626", fontSize: 15 }}>
+                    {fcfa(paymentModalOrder.montantRestant !== undefined ? paymentModalOrder.montantRestant : Math.max(0, paymentModalOrder.total - (paymentModalOrder.montantRecu || 0)), boutique?.devise)}
+                  </span>
+                </div>
+                {paymentModalOrder.dateEcheance && (
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "#DC2626", fontSize: 12 }}>
+                    <span style={{ fontWeight: 600 }}>Date d'échéance :</span>
+                    <span style={{ fontWeight: 800 }}>
+                      {new Date(paymentModalOrder.dateEcheance).toLocaleDateString("fr-FR")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* MONTANT À VERSER */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
+                  Montant Versé Aujourd'hui ({boutique?.devise || "FCFA"}) * :
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  className="bs-input"
+                  style={{ height: 42, fontSize: 16, fontWeight: 800 }}
+                  value={versementMontant}
+                  onChange={(e) => setVersementMontant(e.target.value)}
+                  placeholder="ex: 5000"
+                  required
+                />
+              </div>
+
+              {/* MOYEN DE PAIEMENT */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 800, color: "var(--ink)", display: "block", marginBottom: 6, textTransform: "uppercase" }}>
+                  Mode de Versement :
+                </label>
+                <select
+                  className="bs-select"
+                  style={{ height: 40, fontSize: 13 }}
+                  value={versementMoyen}
+                  onChange={(e) => setVersementMoyen(e.target.value)}
+                >
+                  <option value="cash">Espèces / Cash</option>
+                  <option value="mvola">MVola</option>
+                  <option value="holam">Holam</option>
+                  <option value="carte">Carte Bancaire</option>
+                </select>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="bs-btn-secondary"
+                  onClick={() => setPaymentModalOrder(null)}
+                  style={{ flex: 1, padding: "10px", borderRadius: 10 }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="bs-btn-primary"
+                  disabled={versementLoading}
+                  style={{ flex: 1.5, padding: "10px", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  {versementLoading ? "Validation..." : <><CheckCircle size={16} /> Valider le Versement</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL MODIFIER LA VENTE */}
+      {editModalOrder && (
+        <div 
+          onClick={() => setEditModalOrder(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(4px)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 16
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#FFFFFF", borderRadius: 16, maxWidth: 460, width: "100%",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.2)", overflow: "hidden"
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "#0F172A", color: "#fff" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 15 }}>
+                <Edit2 size={17} color="#F59E0B" /> Modifier la Vente #COM-B{String(editModalOrder.id).padStart(3, "0")}
+              </div>
+              <button onClick={() => setEditModalOrder(null)} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer" }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleValiderEdit} style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 6 }}>
+                  Mode de Paiement :
+                </label>
+                <select
+                  className="bs-select"
+                  style={{ height: 40 }}
+                  value={editForm.moyenPaiement}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, moyenPaiement: e.target.value }))}
+                >
+                  <option value="cash">Espèces / Cash</option>
+                  <option value="mvola">MVola</option>
+                  <option value="holam">Holam / Wero</option>
+                  <option value="carte">Carte Bancaire</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 6 }}>
+                  Adresse / Lieu de Livraison :
+                </label>
+                <input
+                  type="text"
+                  className="bs-input"
+                  style={{ height: 40 }}
+                  value={editForm.adresseLivraison}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, adresseLivraison: e.target.value }))}
+                  placeholder="ex: Comptoir Moroni ou adresse client"
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 6 }}>
+                  Notes Administratives :
+                </label>
+                <textarea
+                  className="bs-input"
+                  rows="3"
+                  style={{ height: "auto", padding: "8px 12px" }}
+                  value={editForm.notesAdmin}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, notesAdmin: e.target.value }))}
+                  placeholder="Notes internes, historique d'accord ou détails de paiement..."
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="bs-btn-secondary"
+                  onClick={() => setEditModalOrder(null)}
+                  style={{ flex: 1, padding: "10px", borderRadius: 10 }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="bs-btn-primary"
+                  disabled={editLoading}
+                  style={{ flex: 1.5, padding: "10px", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                >
+                  {editLoading ? "Enregistrement..." : <><CheckCircle size={16} /> Enregistrer Modifications</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VÉRITABLE FACTURE / DEVIS MODERNE FORMAT A4 & IMPRESSION PDF */}
       {selectedOrder && (
-        <ReceiptModal
+        <InvoiceModal
           order={selectedOrder}
           boutique={boutique}
           onClose={() => setSelectedOrder(null)}

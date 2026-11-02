@@ -166,8 +166,18 @@ export function AuthProvider({ children }) {
     setUser((prev) => (prev ? { ...prev, ...updatedUserData } : null));
   }
 
+  function hasPerm(permissionKey) {
+    if (!user) return false;
+    if (user.role === "admin" || user.role === "super_admin") return true;
+    const userPerms = Array.isArray(user.permissions) ? user.permissions : [];
+    if (Array.isArray(permissionKey)) {
+      return permissionKey.some(k => userPerms.includes(k));
+    }
+    return userPerms.includes(permissionKey);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, boutique, refreshBoutique, loading, login, register, verifyOtp, resendOtp, logout, updateUser, theme, toggleTheme }}>
+    <AuthContext.Provider value={{ user, boutique, refreshBoutique, loading, login, register, verifyOtp, resendOtp, logout, updateUser, theme, toggleTheme, hasPerm }}>
       {children}
     </AuthContext.Provider>
   );

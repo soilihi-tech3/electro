@@ -20,6 +20,15 @@ const Order = sequelize.define("Order", {
   fraisLivraison: { type: DataTypes.STRING(255), defaultValue: "0" },
   total: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   notes: { type: DataTypes.TEXT, allowNull: true },
+  typeDocument: { type: DataTypes.STRING(30), defaultValue: "commande", field: "type_document" }, // 'commande' | 'vente_directe' | 'devis'
+  montantRecu: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: "montant_recu" },
+  monnaieRendue: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: "monnaie_rendue" },
+  montantRestant: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0, field: "montant_restant" },
+  dateEcheance: { type: DataTypes.DATEONLY, allowNull: true, field: "date_echeance" },
+  creeParId: { type: DataTypes.INTEGER, allowNull: true, field: "cree_par_id" },
+  creeParNom: { type: DataTypes.STRING(150), allowNull: true, field: "cree_par_nom" },
+  modifieParId: { type: DataTypes.INTEGER, allowNull: true, field: "modifie_par_id" },
+  modifieParNom: { type: DataTypes.STRING(150), allowNull: true, field: "modifie_par_nom" },
 }, { tableName: "orders" });
 
 module.exports = Order;

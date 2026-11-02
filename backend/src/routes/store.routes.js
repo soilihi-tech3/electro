@@ -186,8 +186,12 @@ router.get("/:slug/products", loadBoutique, cacheMiddleware(120), async (req, re
 
     if (req.query.promo === "true") where.prixPromo = { [Op.ne]: null };
 
+    // Ne pas afficher sur le site les produits marqués "visibleEnLigne: false"
+    where.visibleEnLigne = { [Op.ne]: false };
+
     const products = await Product.findAll({
       where,
+      attributes: { exclude: ["dernierPrix"] },
       include: [
         { model: Category }, 
         { model: Marque, as: "marque", attributes: ["id", "nom", "logoUrl"], required: false },
@@ -203,7 +207,12 @@ router.get("/:slug/products", loadBoutique, cacheMiddleware(120), async (req, re
 router.get("/:slug/products/:id", loadBoutique, cacheMiddleware(120), async (req, res, next) => {
   try {
     const product = await Product.findOne({
-      where: { id: req.params.id, boutiqueId: req.boutique.id },
+      where: { 
+        id: req.params.id, 
+        boutiqueId: req.boutique.id,
+        visibleEnLigne: { [Op.ne]: false }
+      },
+      attributes: { exclude: ["dernierPrix"] },
       include: [
         { model: Category },
         { model: Marque, as: "marque", attributes: ["id", "nom", "logoUrl", "description"], required: false },

@@ -145,9 +145,17 @@ export default function Catalogue() {
   const stripAccents = (str) =>
     (str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
+  // Marques disponibles dans la catégorie active
+  const categoryProducts = categoryId ? products.filter((p) => String(p.categoryId) === String(categoryId)) : products;
+  const categoryMarqueIds = new Set(categoryProducts.map((p) => p.marqueId).filter(Boolean));
+  const availableMarques = marques.filter((m) => categoryMarqueIds.has(m.id));
+
   let displayedProducts = products;
   if (onlyFavoris) {
     displayedProducts = displayedProducts.filter((p) => favIds.includes(p.id));
+  }
+  if (categoryId) {
+    displayedProducts = displayedProducts.filter((p) => String(p.categoryId) === String(categoryId));
   }
   if (etat) {
     displayedProducts = displayedProducts.filter((p) => p.etat === etat);
@@ -197,14 +205,25 @@ export default function Catalogue() {
       <div className="bs-cats">
         <div
           className={"bs-cat-card" + (!categoryId && !famille && !onlyFavoris ? " on" : "")}
-          onClick={() => setParams({})}
+          onClick={() => {
+            const next = new URLSearchParams(params);
+            next.delete("categoryId");
+            next.delete("famille");
+            next.delete("favoris");
+            setParams(next);
+          }}
         >
           <div className="bs-cat-name" style={{ padding: "20px 0" }}>Tout afficher</div>
         </div>
 
         <div
           className={"bs-cat-card" + (onlyFavoris ? " on" : "")}
-          onClick={() => setParams({ favoris: "1" })}
+          onClick={() => {
+            const next = new URLSearchParams(params);
+            if (onlyFavoris) next.delete("favoris");
+            else next.set("favoris", "1");
+            setParams(next);
+          }}
           style={{
             borderColor: onlyFavoris ? "#B4483A" : undefined,
             background: onlyFavoris ? "#FAD2CD" : undefined,
@@ -235,7 +254,17 @@ export default function Catalogue() {
           <div
             key={c.id}
             className={"bs-cat-card" + (categoryId == c.id && !onlyFavoris ? " on" : "")}
-            onClick={() => setParams({ categoryId: c.id })}
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              if (String(categoryId) === String(c.id)) {
+                next.delete("categoryId");
+              } else {
+                next.set("categoryId", c.id);
+              }
+              next.delete("famille");
+              next.delete("favoris");
+              setParams(next);
+            }}
           >
             <img
               src={
@@ -341,8 +370,8 @@ export default function Catalogue() {
           </div>
         </div>
 
-        {/* LIGNE 2 : SÉLECTION MARQUES */}
-        {marques.length > 0 && (
+        {/* LIGNE 2 : SÉLECTION MARQUES (Masqué automatiquement si aucun produit de la catégorie n'a de marque) */}
+        {availableMarques.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingTop: 10, borderTop: "1px dashed var(--line)" }}>
             <span style={{ fontSize: 13, fontWeight: 800, color: "var(--forest-dark)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
               Marques :
@@ -368,7 +397,7 @@ export default function Catalogue() {
                 Toutes les marques
               </button>
 
-              {marques.map(m => {
+              {availableMarques.map(m => {
                 const isSelected = String(marqueId) === String(m.id);
                 return (
                   <button

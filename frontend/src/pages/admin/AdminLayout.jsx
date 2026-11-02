@@ -3,7 +3,7 @@ import { NavLink, Link, Outlet, useLocation, useNavigate } from "react-router-do
 import { 
   LayoutDashboard, Package, ShoppingCart, Users, Store, LogOut, Layers, 
   PanelLeftClose, PanelLeftOpen, User, Image, LayoutGrid, CreditCard, 
-  ShoppingBag, Truck, Scale, History, Menu, X, ExternalLink, ArrowLeft, Clock, Lock, UserCheck, Sun, Moon, PhoneCall, Award
+  ShoppingBag, Truck, Scale, History, Menu, X, ExternalLink, ArrowLeft, Clock, Lock, UserCheck, Sun, Moon, PhoneCall, Award, TrendingUp
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
@@ -14,6 +14,7 @@ import ProfileModal from "../../components/ProfileModal.jsx";
 const ROUTE_MODULE_MAP = {
   "/admin/vente": { key: "vente", label: "Vente Directe (POS)" },
   "/admin/ventes-historique": { key: "ventesHistorique", label: "Historique Ventes" },
+  "/admin/bilan": { key: "bilan", label: "Bilan Financier" },
   "/admin/achats": { key: "achats", label: "Achats & Stocks" },
   "/admin/fournisseurs": { key: "fournisseurs", label: "Fournisseurs" },
   "/admin/unites": { key: "unites", label: "Unités de vente" },
@@ -42,16 +43,17 @@ export default function AdminLayout() {
 
   const allLinks = [
     { to: "/admin", label: "Tableau de bord", icon: LayoutDashboard, exact: true, permKey: "voir_dashboard" },
-    { to: "/admin/vente", label: "Vente Directe (POS)", icon: CreditCard, permKey: ["gerer_commandes", "voir_dashboard"], moduleKey: "vente" },
-    { to: "/admin/ventes-historique", label: "Historique Ventes", icon: History, permKey: ["gerer_commandes", "voir_dashboard"], moduleKey: "ventesHistorique" },
-    { to: "/admin/achats", label: "Achats & Stocks", icon: ShoppingBag, permKey: ["gerer_produits", "gerer_parametres"], moduleKey: "achats" },
-    { to: "/admin/fournisseurs", label: "Fournisseurs", icon: Truck, permKey: ["gerer_produits", "gerer_parametres"], moduleKey: "fournisseurs" },
-    { to: "/admin/unites", label: "Unités de vente", icon: Scale, permKey: ["gerer_produits", "gerer_categories"], moduleKey: "unites" },
-    { to: "/admin/marques", label: "Marques", icon: Award, permKey: ["gerer_categories", "gerer_produits"] },
-    { to: "/admin/categories", label: "Catégories", icon: Layers, permKey: "gerer_categories", moduleKey: "categories" },
-    { to: "/admin/produits", label: "Produits", icon: Package, permKey: ["ajouter_produit", "modifier_produit", "supprimer_produit", "gerer_produits"], moduleKey: "produits" },
-    { to: "/admin/commandes", label: "Commandes", icon: ShoppingCart, permKey: ["valider_commande", "changer_statut_commande", "assigner_commande", "gerer_commandes"], moduleKey: "commandes" },
-    { to: "/admin/clients", label: "Clients", icon: UserCheck, permKey: ["gerer_commandes", "gerer_utilisateurs", "voir_dashboard"] },
+    { to: "/admin/vente", label: "Vente Directe (POS)", icon: CreditCard, permKey: ["gerer_caisse", "gerer_commandes"], moduleKey: "vente" },
+    { to: "/admin/ventes-historique", label: "Historique Ventes", icon: History, permKey: ["voir_ventes", "voir_toutes_ventes", "gerer_caisse", "gerer_commandes"], moduleKey: "ventesHistorique" },
+    { to: "/admin/bilan", label: "Bilan Financier", icon: TrendingUp, permKey: "voir_bilan" },
+    { to: "/admin/achats", label: "Achats & Stocks", icon: ShoppingBag, permKey: ["voir_achats", "gerer_achats"], moduleKey: "achats" },
+    { to: "/admin/fournisseurs", label: "Fournisseurs", icon: Truck, permKey: ["voir_fournisseurs", "gerer_fournisseurs"], moduleKey: "fournisseurs" },
+    { to: "/admin/unites", label: "Unités de vente", icon: Scale, permKey: ["voir_unites", "gerer_unites"], moduleKey: "unites" },
+    { to: "/admin/marques", label: "Marques", icon: Award, permKey: ["voir_marques", "gerer_marques"] },
+    { to: "/admin/categories", label: "Catégories", icon: Layers, permKey: ["voir_categories", "gerer_categories"], moduleKey: "categories" },
+    { to: "/admin/produits", label: "Produits", icon: Package, permKey: ["voir_produits", "gerer_produits"], moduleKey: "produits" },
+    { to: "/admin/commandes", label: "Commandes", icon: ShoppingCart, permKey: "gerer_commandes", moduleKey: "commandes" },
+    { to: "/admin/clients", label: "Clients", icon: UserCheck, permKey: ["voir_clients", "gerer_clients"] },
     { to: "/admin/employes", label: "Équipe & Rôles", icon: Users, adminOnly: true, moduleKey: "employes" },
     { to: "/admin/parametres", label: "Paramètres Boutique", icon: Store, permKey: "gerer_parametres", moduleKey: "parametres" },
   ];

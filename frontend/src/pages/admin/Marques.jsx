@@ -4,8 +4,11 @@ import { PlusCircle, Edit, Trash2, Award, X, Search, Package } from "lucide-reac
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import ImageUploader from "../../components/ImageUploader";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Marques() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("gerer_marques");
   const [marques, setMarques] = useState([]);
   const [modalType, setModalType] = useState(null); // 'create' | 'edit' | null
   const [selectedMarque, setSelectedMarque] = useState(null);
@@ -107,13 +110,19 @@ export default function Marques() {
             Gérez la liste des constructeurs et marques officielles (Schneider, Legrand, Philips, Bosch...). Chaque produit peut être associé à sa marque.
           </p>
         </div>
-        <button 
-          className="bs-btn-primary" 
-          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12, fontWeight: 700 }} 
-          onClick={openCreateModal}
-        >
-          <PlusCircle size={18} /> Ajouter une Marque
-        </button>
+        {canManage ? (
+          <button 
+            className="bs-btn-primary" 
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12, fontWeight: 700 }} 
+            onClick={openCreateModal}
+          >
+            <PlusCircle size={18} /> Ajouter une Marque
+          </button>
+        ) : (
+          <span style={{ fontSize: 13, background: "var(--paper)", border: "1px solid var(--line)", padding: "7px 14px", borderRadius: 10, color: "var(--muted)", fontWeight: 600 }}>
+            Mode consultation (Lecture seule)
+          </span>
+        )}
       </div>
 
       <div className="bs-card" style={{ padding: 20, marginBottom: 20 }}>
@@ -196,24 +205,28 @@ export default function Marques() {
                           </span>
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          <div style={{ display: "inline-flex", gap: 8 }}>
-                            <button 
-                              className="bs-icon-btn" 
-                              title="Modifier la marque"
-                              onClick={() => openEditModal(m)}
-                              style={{ color: "var(--forest)" }}
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button 
-                              className="bs-icon-btn" 
-                              title="Supprimer la marque"
-                              onClick={() => handleDelete(m.id, m.nom)}
-                              style={{ color: "#DC2626" }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+                          {canManage ? (
+                            <div style={{ display: "inline-flex", gap: 8 }}>
+                              <button 
+                                className="bs-icon-btn" 
+                                title="Modifier la marque"
+                                onClick={() => openEditModal(m)}
+                                style={{ color: "var(--forest)" }}
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button 
+                                className="bs-icon-btn" 
+                                title="Supprimer la marque"
+                                onClick={() => handleDelete(m.id, m.nom)}
+                                style={{ color: "#DC2626" }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>Lecture seule</span>
+                          )}
                         </td>
                       </tr>
                     );

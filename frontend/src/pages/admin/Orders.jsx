@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Search, Filter, ShoppingBag, DollarSign, Clock, CheckCircle2,
-  Truck, UserCheck, Eye, X, Phone, MapPin, CreditCard, Calendar, Smartphone
+  Truck, UserCheck, Eye, X, Phone, MapPin, CreditCard, Calendar, Smartphone, Trash2
 } from "lucide-react";
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
@@ -221,6 +221,24 @@ export default function AdminOrders() {
       }
     } catch (err) {
       load(); // Revert to server state on error
+    }
+  }
+
+  async function handleDeleteOrder(orderId) {
+    if (!confirm("Voulez-vous vraiment supprimer cette commande / vente ?\nLes articles seront automatiquement restitués au stock s'ils avaient été décomptés.")) return;
+    try {
+      await api.delete(`/admin/orders/${orderId}`);
+      if (showToast) {
+        showToast("Commande supprimée et articles réintégrés au stock avec succès.", "success", "Suppression effectuée");
+      }
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder(null);
+      }
+      load();
+    } catch (err) {
+      if (showToast) {
+        showToast(err.response?.data?.message || "Erreur lors de la suppression.", "error");
+      }
     }
   }
 
@@ -728,17 +746,31 @@ export default function AdminOrders() {
 
                     {/* 10. Action Button */}
                     <td style={{ textAlign: "center" }}>
-                      <button
-                        onClick={() => setSelectedOrder(o)}
-                        style={{
-                          background: "var(--paper)", border: "1px solid var(--line)",
-                          borderRadius: 8, padding: "6px 12px", cursor: "pointer",
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          fontSize: 12, fontWeight: 600, color: "var(--forest)"
-                        }}
-                      >
-                        <Eye size={14} /> Voir
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        <button
+                          onClick={() => setSelectedOrder(o)}
+                          style={{
+                            background: "var(--paper)", border: "1px solid var(--line)",
+                            borderRadius: 8, padding: "6px 12px", cursor: "pointer",
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            fontSize: 12, fontWeight: 600, color: "var(--forest)"
+                          }}
+                        >
+                          <Eye size={14} /> Voir
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrder(o.id)}
+                          style={{
+                            background: "#FEF2F2", border: "1px solid #FCA5A5",
+                            borderRadius: 8, padding: "6px 8px", cursor: "pointer",
+                            display: "inline-flex", alignItems: "center",
+                            fontSize: 12, color: "#DC2626"
+                          }}
+                          title="Supprimer la commande (restaure le stock)"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -916,14 +948,33 @@ export default function AdminOrders() {
               )}
             </div>
 
-            {/* Close button */}
-            <button
-              onClick={() => setSelectedOrder(null)}
-              className="bs-btn-primary"
-              style={{ width: "100%", marginTop: 24, padding: "12px" }}
-            >
-              Fermer les détails
-            </button>
+            {/* Audit & delete buttons */}
+            {selectedOrder.creeParNom && (
+              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 14, textAlign: "center" }}>
+                Enregistrée par : <strong>{selectedOrder.creeParNom}</strong>
+                {selectedOrder.modifieParNom && <span> · Modifiée par : <strong>{selectedOrder.modifieParNom}</strong></span>}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button
+                onClick={() => handleDeleteOrder(selectedOrder.id)}
+                style={{
+                  padding: "12px 18px", borderRadius: 10, background: "#FEF2F2",
+                  border: "1px solid #FCA5A5", color: "#DC2626", fontWeight: 700,
+                  fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6
+                }}
+              >
+                <Trash2 size={16} /> Supprimer
+              </button>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="bs-btn-primary"
+                style={{ flex: 1, padding: "12px" }}
+              >
+                Fermer les détails
+              </button>
+            </div>
           </div>
         </div>
       )}

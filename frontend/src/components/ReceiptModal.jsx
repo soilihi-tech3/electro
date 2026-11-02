@@ -48,7 +48,7 @@ export default function ReceiptModal({ order, boutique, onClose }) {
   const typeLabel = isRecharge 
     ? "Recharge Crédit Mobile" 
     : isPOS 
-      ? "Vente Directe POS (Comptoir)" 
+      ? "Vente Directe POS (Boutique)" 
       : isRetraitEnLigne
         ? "Commande en Ligne (Retrait boutique)"
         : "Commande en Ligne (Livraison à domicile)";
@@ -117,6 +117,9 @@ export default function ReceiptModal({ order, boutique, onClose }) {
           )}
           <div><strong style={{ color: "#0F172A" }}>Type:</strong> {typeLabel}</div>
           <div><strong style={{ color: "#0F172A" }}>Statut:</strong> <span style={{ color: statusColor, fontWeight: 800 }}>{statusLabel}</span></div>
+          {order.dateEcheance && order.statutPaiement !== "paye" && (
+            <div><strong style={{ color: "#DC2626" }}>Échéance :</strong> <span style={{ color: "#DC2626", fontWeight: 800 }}>{new Date(order.dateEcheance).toLocaleDateString("fr-FR")}</span></div>
+          )}
         </div>
 
         {/* ITEMS TABLE */}

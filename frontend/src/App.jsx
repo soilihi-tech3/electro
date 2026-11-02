@@ -41,6 +41,7 @@ const UnitesVente = React.lazy(() => import("./pages/admin/UnitesVente.jsx"));
 const AdminMarques = React.lazy(() => import("./pages/admin/Marques.jsx"));
 const Achats = React.lazy(() => import("./pages/admin/Achats.jsx"));
 const SalesHistory = React.lazy(() => import("./pages/admin/SalesHistory.jsx"));
+const AdminBilan = React.lazy(() => import("./pages/admin/Bilan.jsx"));
 
 const SuperAdmin = React.lazy(() => import("./pages/superadmin/SuperAdmin.jsx"));
 
@@ -152,6 +153,7 @@ export default function App() {
           <Route index element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><Dashboard /></React.Suspense>} />
           <Route path="vente" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><VenteDirecte /></React.Suspense>} />
           <Route path="ventes-historique" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><SalesHistory /></React.Suspense>} />
+          <Route path="bilan" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><AdminBilan /></React.Suspense>} />
           <Route path="achats" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><Achats /></React.Suspense>} />
           <Route path="fournisseurs" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><Fournisseurs /></React.Suspense>} />
           <Route path="unites" element={<React.Suspense fallback={<div className="bs-admin-loading-spinner" />}><UnitesVente /></React.Suspense>} />

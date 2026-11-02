@@ -22,6 +22,8 @@ export default function ProductDetail() {
   // Instant render using passed state from ProductCard, fallback to null
   const [product, setProduct] = useState(() => location.state?.product || readCache(`product:${id}`) || null);
   const [selectedImgIndex, setSelectedImgIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [selectedOption, setSelectedOption] = useState(null);
   const [reviewDraft, setReviewDraft] = useState({ note: 5, commentaire: "" });
   const [erreur, setErreur] = useState("");
   const [added, setAdded] = useState(false);
@@ -148,19 +150,94 @@ export default function ProductDetail() {
     </div>
   );
 
-  // Cart quantity check
-  const itemInCart = cart.find(l => l.product.id === product.id);
+  // Helper pour désérialiser les variantes/photos en toute sécurité (JSON string ou Object/Array)
+  const parseJsonSafe = (val, fallback) => {
+    if (!val) return fallback;
+    if (typeof val === "object") return val;
+    if (typeof val === "string") {
+      try {
+        const p = JSON.parse(val);
+        return typeof p === "string" ? parseJsonSafe(p, fallback) : (p ?? fallback);
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  };
+
+  // Variantes
+  const parsedColors = parseJsonSafe(product.variantesCouleurs, []);
+  const variantesCouleurs = Array.isArray(parsedColors) ? parsedColors : [];
+
+  const rawOptionsObj = parseJsonSafe(product.variantesOptions, { titre: "Option", options: [] });
+  let optionTitre = "Option";
+  let variantesOptions = [];
+  if (rawOptionsObj && typeof rawOptionsObj === "object" && !Array.isArray(rawOptionsObj) && rawOptionsObj.options) {
+    optionTitre = rawOptionsObj.titre || "Option";
+    variantesOptions = Array.isArray(rawOptionsObj.options) ? rawOptionsObj.options : [];
+  } else if (Array.isArray(rawOptionsObj)) {
+    variantesOptions = rawOptionsObj;
+  }
+
+  // Stock spécifique à la variante sélectionnée
+  const hasVariants = variantesCouleurs.length > 0 || variantesOptions.length > 0;
+  let activeVariantStock = product.stock ?? 0;
+  let isVariantOutOfStock = false;
+  let activeVariantName = "";
+
+  if (selectedColor) {
+    activeVariantName = `Couleur ${selectedColor.nom}`;
+    if (selectedColor.stock !== undefined && selectedColor.stock !== "") {
+      activeVariantStock = Math.min(Number(selectedColor.stock), Number(product.stock ?? 0));
+    }
+  } else if (selectedOption) {
+    activeVariantName = `${optionTitre} ${selectedOption.nom}`;
+    if (selectedOption.stock !== undefined && selectedOption.stock !== "") {
+      activeVariantStock = Math.min(Number(selectedOption.stock), Number(product.stock ?? 0));
+    }
+  }
+
+  // Cart quantity check pour l'article précis
+  const variantSuffix = [selectedColor?.nom, selectedOption?.nom].filter(Boolean).join(" · ");
+  const currentCartItemId = `${product.id}_${selectedColor?.nom || ""}_${selectedOption?.nom || ""}`;
+  const itemInCart = cart.find(l => (l.product.cartItemId || String(l.product.id)) === currentCartItemId || (l.product.id === product.id && !l.product.cartItemId && !variantSuffix));
   const qtyInCart = itemInCart ? itemInCart.quantite : 0;
-  const stockDisponible = Math.max(0, (product.stock ?? 0) - qtyInCart);
-  const isMaxStockReached = product.stock > 0 && stockDisponible <= 0;
+  const stockDisponible = Math.max(0, activeVariantStock - qtyInCart);
+  const isMaxStockReached = activeVariantStock > 0 && stockDisponible <= 0;
+  isVariantOutOfStock = activeVariantStock <= 0;
+
+  // Calcul du prix effectif
+  const basePrice = (product.enPromo && product.prixPromo) ? Number(product.prixPromo) : Number(product.prix);
+  let effectivePrice = basePrice;
+  if (selectedColor && selectedColor.prix && Number(selectedColor.prix) > 0) {
+    effectivePrice = Number(selectedColor.prix);
+  } else if (selectedOption && selectedOption.prix && Number(selectedOption.prix) > 0) {
+    effectivePrice = Number(selectedOption.prix);
+  }
 
   function handleAddToCart() {
     if (!product) return;
     if (product.stock <= 0) {
-      showToast(`Désolé, le produit "${product.nom}" est actuellement en rupture de stock. Il sera de nouveau disponible bientôt !`, "warning");
+      showToast(`Désolé, le produit "${product.nom}" est actuellement en rupture de stock.`, "warning");
       return;
     }
-    const ok = addToCart(product, quantity);
+    if (isVariantOutOfStock) {
+      showToast(`Cette sélection (${activeVariantName}) est actuellement épuisée. Veuillez choisir un autre modèle ou une autre couleur.`, "warning");
+      return;
+    }
+
+    const selectedVariantPhoto = selectedColor?.photo || selectedOption?.photo || product.imageUrl;
+    const productToAdd = {
+      ...product,
+      cartItemId: currentCartItemId,
+      nom: variantSuffix ? `${product.nom} (${variantSuffix})` : product.nom,
+      prix: effectivePrice,
+      stock: activeVariantStock,
+      imageUrl: selectedVariantPhoto,
+      selectedColor,
+      selectedOption
+    };
+    const ok = addToCart(productToAdd, quantity);
     if (ok) {
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
@@ -178,6 +255,22 @@ export default function ProductDetail() {
   const images = [];
   if (product.imageUrl) images.push(product.imageUrl);
   if (product.imageUrl2) images.push(product.imageUrl2);
+  const parsedGallery = parseJsonSafe(product.galeriePhotos, []);
+  if (Array.isArray(parsedGallery)) {
+    parsedGallery.forEach(g => {
+      if (g && !images.includes(g)) images.push(g);
+    });
+  }
+  if (Array.isArray(variantesCouleurs)) {
+    variantesCouleurs.forEach(vc => {
+      if (vc?.photo && !images.includes(vc.photo)) images.push(vc.photo);
+    });
+  }
+  if (Array.isArray(variantesOptions)) {
+    variantesOptions.forEach(vo => {
+      if (vo?.photo && !images.includes(vo.photo)) images.push(vo.photo);
+    });
+  }
   if (images.length === 0) {
     images.push("https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80");
   }
@@ -188,7 +281,18 @@ export default function ProductDetail() {
 
   return (
     <div style={{ minHeight: "75vh" }}>
-      <button className="bs-back" onClick={() => navigate("/catalogue")}>
+      <button 
+        className="bs-back" 
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else if (product.categoryId) {
+            navigate(`/catalogue?categoryId=${product.categoryId}`);
+          } else {
+            navigate("/catalogue");
+          }
+        }}
+      >
         <ArrowLeft size={16} /> Retour au catalogue
       </button>
 
@@ -217,15 +321,29 @@ export default function ProductDetail() {
 
           {images.length > 1 && (
             <div className="bs-thumbs">
-              {images.map((img, idx) => (
-                <img 
-                  key={idx}
-                  src={img} 
-                  alt={`Vignette ${idx + 1}`} 
-                  className={`bs-gallery-thumb ${idx === selectedImgIndex ? "active" : ""}`}
-                  onClick={() => setSelectedImgIndex(idx)} 
-                />
-              ))}
+              {images.map((img, idx) => {
+                const isSelected = idx === selectedImgIndex;
+                return (
+                  <img 
+                    key={idx}
+                    src={img} 
+                    alt={`Vignette ${idx + 1}`} 
+                    className={`bs-gallery-thumb ${isSelected ? "active" : ""}`}
+                    onClick={() => {
+                      setSelectedImgIndex(idx);
+                      // Détection automatique de la variante associée à cette photo
+                      const matchOption = variantesOptions.find(vo => vo.photo === img);
+                      if (matchOption) {
+                        setSelectedOption(matchOption);
+                      }
+                      const matchColor = variantesCouleurs.find(vc => vc.photo === img);
+                      if (matchColor) {
+                        setSelectedColor(matchColor);
+                      }
+                    }} 
+                  />
+                );
+              })}
             </div>
           )}
         </div>
@@ -285,45 +403,216 @@ export default function ProductDetail() {
           {/* STOCK BADGES */}
           {product.stock <= 0 ? (
             <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700, marginBottom: 16, background: "#FAD2CD", color: "#B4483A" }}>
-              Rupture de stock
+              Rupture de stock globale
+            </div>
+          ) : isVariantOutOfStock ? (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 14, fontSize: 13, fontWeight: 700, marginBottom: 16, background: "#FEF2F2", color: "#DC2626", border: "1.5px solid #FCA5A5" }}>
+              <AlertTriangle size={16} /> 
+              <span>Épuisé : <strong>{activeVariantName}</strong> n'est plus en stock. Veuillez choisir un autre modèle ou une autre couleur.</span>
             </div>
           ) : isMaxStockReached ? (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700, marginBottom: 16, background: "#FEF3C7", color: "#B45309", border: "1px solid #F59E0B" }}>
-              <AlertTriangle size={15} /> Stock maximal dans votre panier ({qtyInCart}/{product.stock} restants)
+              <AlertTriangle size={15} /> Stock maximal dans votre panier ({qtyInCart}/{activeVariantStock} restants)
             </div>
           ) : (
             <div style={{ display: "inline-block", padding: "6px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700, marginBottom: 16, background: "rgba(31, 77, 58, 0.1)", color: "var(--forest)" }}>
-              En stock ({product.stock} {product.unite} restants{qtyInCart > 0 ? ` · ${qtyInCart} dans le panier` : ""})
+              {activeVariantName ? (
+                <>En stock pour {activeVariantName} : <strong>{activeVariantStock} restant{activeVariantStock > 1 ? "s" : ""}</strong>{qtyInCart > 0 ? ` (${qtyInCart} dans votre panier)` : ""}</>
+              ) : (
+                <>En stock ({product.stock} restants{qtyInCart > 0 ? ` · ${qtyInCart} dans le panier` : ""})</>
+              )}
             </div>
           )}
 
           <div className="bs-price-row" style={{ fontSize: 24, marginBottom: 20 }}>
-            {product.prixPromo ? (
+            {effectivePrice !== Number(product.prix) ? (
               <>
                 <span className="bs-price barre" style={{ fontSize: 20, color: "var(--muted)", textDecoration: "line-through" }}>{fcfa(product.prix)}</span>
-                <span className="bs-price" style={{ fontSize: 32, color: "#B4483A", fontWeight: 900 }}>{fcfa(product.prixPromo)}</span>
+                <span className="bs-price" style={{ fontSize: 32, color: "#B4483A", fontWeight: 900 }}>{fcfa(effectivePrice)}</span>
               </>
             ) : (
-              <span className="bs-price" style={{ fontSize: 32, fontWeight: 900 }}>{fcfa(product.prix)}</span>
+              <span className="bs-price" style={{ fontSize: 32, fontWeight: 900 }}>{fcfa(effectivePrice)}</span>
             )}
-            <span style={{ color: "var(--muted)", fontSize: 15, fontWeight: 600 }}>
-              / {product.poids && product.poids !== "1" ? `${product.poids} ` : ""}{product.unite}
-            </span>
           </div>
 
+          {/* SÉLECTEUR DE VARIANTES DE COULEURS ENCADRÉ ET MIS EN VALEUR */}
+          {variantesCouleurs.length > 0 && (
+            <div style={{
+              marginBottom: 20,
+              padding: "16px 18px",
+              borderRadius: 16,
+              background: "var(--paper)",
+              border: "1.5px solid var(--line)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--forest-dark)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>Couleur :</span>
+                  <span style={{ color: "var(--forest)", fontWeight: 900 }}>{selectedColor?.nom || "Toutes"}</span>
+                </div>
+                {selectedColor && (
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: "#059669", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 8px", borderRadius: 8 }}>
+                    {(selectedColor.stock !== undefined && selectedColor.stock !== "") ? `${selectedColor.stock} disponible(s)` : "En stock"}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                {variantesCouleurs.map((vc, idx) => {
+                  const isCur = selectedColor?.nom === vc.nom;
+                  const vStock = (vc.stock !== undefined && vc.stock !== "") ? Number(vc.stock) : product.stock;
+                  const isVDepleted = vStock <= 0;
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const nextCur = isCur ? null : vc;
+                        setSelectedColor(nextCur);
+                        if (nextCur?.photo) {
+                          const pIdx = images.indexOf(nextCur.photo);
+                          if (pIdx >= 0) setSelectedImgIndex(pIdx);
+                        } else if (!nextCur && product.imageUrl) {
+                          const pIdx = images.indexOf(product.imageUrl);
+                          if (pIdx >= 0) setSelectedImgIndex(pIdx);
+                        }
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "7px 14px",
+                        borderRadius: 14,
+                        border: isCur ? "2px solid var(--forest)" : "1.5px solid var(--line)",
+                        background: isCur ? "var(--forest-light)" : "#ffffff",
+                        color: isCur ? "var(--forest-dark)" : "var(--ink)",
+                        fontWeight: 700,
+                        fontSize: 13,
+                        cursor: "pointer",
+                        boxShadow: isCur ? "0 2px 8px rgba(31, 77, 58, 0.15)" : "none",
+                        opacity: isVDepleted ? 0.6 : 1,
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      {vc.photo ? (
+                        <img src={vc.photo} alt={vc.nom} style={{ width: 22, height: 22, borderRadius: 6, objectFit: "cover" }} />
+                      ) : (
+                        <span style={{ width: 16, height: 16, borderRadius: "50%", background: vc.couleur || "#163424", border: "1px solid rgba(0,0,0,0.15)" }} />
+                      )}
+                      <span>{vc.nom}</span>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 6,
+                        background: isVDepleted ? "#FEE2E2" : (isCur ? "#E6F4EA" : "#F3F4F6"),
+                        color: isVDepleted ? "#DC2626" : (isCur ? "var(--forest-dark)" : "var(--muted)")
+                      }}>
+                        {isVDepleted ? "Épuisé" : `${vStock} dispo`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* SÉLECTEUR DE VARIANTES PERSONNALISABLES (SENTEURS, MODÈLES...) ENCADRÉ */}
+          {variantesOptions.length > 0 && (
+            <div style={{
+              marginBottom: 20,
+              padding: "16px 18px",
+              borderRadius: 16,
+              background: "var(--paper)",
+              border: "1.5px solid var(--line)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.02)"
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--forest-dark)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>{optionTitre} :</span>
+                  <span style={{ color: "var(--forest)", fontWeight: 900 }}>{selectedOption?.nom || "Tous"}</span>
+                </div>
+                {selectedOption && (
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: "#059669", background: "#ECFDF5", border: "1px solid #A7F3D0", padding: "2px 8px", borderRadius: 8 }}>
+                    {(selectedOption.stock !== undefined && selectedOption.stock !== "") ? `${selectedOption.stock} disponible(s)` : "En stock"}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                {variantesOptions.map((vo, idx) => {
+                  const isCur = selectedOption?.nom === vo.nom;
+                  const vStock = (vo.stock !== undefined && vo.stock !== "") ? Number(vo.stock) : product.stock;
+                  const isVDepleted = vStock <= 0;
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        const nextCur = isCur ? null : vo;
+                        setSelectedOption(nextCur);
+                        if (nextCur?.photo) {
+                          const pIdx = images.indexOf(nextCur.photo);
+                          if (pIdx >= 0) setSelectedImgIndex(pIdx);
+                        } else if (!nextCur && product.imageUrl) {
+                          const pIdx = images.indexOf(product.imageUrl);
+                          if (pIdx >= 0) setSelectedImgIndex(pIdx);
+                        }
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 16px",
+                        borderRadius: 14,
+                        border: isCur ? "2px solid var(--forest)" : "1.5px solid var(--line)",
+                        background: isCur ? "var(--forest-light)" : "#ffffff",
+                        color: isCur ? "var(--forest-dark)" : "var(--ink)",
+                        fontWeight: 700,
+                        fontSize: 13.5,
+                        cursor: "pointer",
+                        boxShadow: isCur ? "0 2px 8px rgba(31, 77, 58, 0.15)" : "none",
+                        opacity: isVDepleted ? 0.6 : 1,
+                        transition: "all 0.15s ease"
+                      }}
+                    >
+                      {vo.photo && (
+                        <img src={vo.photo} alt={vo.nom} style={{ width: 24, height: 24, borderRadius: 6, objectFit: "cover" }} />
+                      )}
+                      <span>{vo.nom}</span>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: 6,
+                        background: isVDepleted ? "#FEE2E2" : (isCur ? "#E6F4EA" : "#F3F4F6"),
+                        color: isVDepleted ? "#DC2626" : (isCur ? "var(--forest-dark)" : "var(--muted)")
+                      }}>
+                        {isVDepleted ? "Épuisé" : `${vStock} dispo`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <p style={{ color: "var(--muted)", fontSize: 15, maxWidth: 520, lineHeight: 1.6, marginBottom: 24 }}>
-            {product.description || (product.stock > 0 ? `Produit de qualité supérieure disponible en stock (${product.stock} ${product.unite}).` : "Rupture de stock temporaire.")}
+            {product.description || (product.stock > 0 ? `Produit de qualité supérieure disponible en stock (${product.stock} disponibles).` : "Rupture de stock temporaire.")}
           </p>
 
           <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 40 }}>
-            <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--line)", borderRadius: 30, overflow: "hidden", height: 48, opacity: isMaxStockReached || product.stock === 0 ? 0.6 : 1 }}>
-              <button onClick={decrementQty} disabled={quantity <= 1} style={{ width: 44, height: "100%", background: "var(--paper)", border: "none", cursor: quantity <= 1 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", border: "1px solid var(--line)", borderRadius: 30, overflow: "hidden", height: 48, opacity: isMaxStockReached || isVariantOutOfStock || product.stock === 0 ? 0.6 : 1 }}>
+              <button onClick={decrementQty} disabled={quantity <= 1 || isVariantOutOfStock} style={{ width: 44, height: "100%", background: "var(--paper)", border: "none", cursor: quantity <= 1 || isVariantOutOfStock ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Minus size={18} color="var(--ink)" />
               </button>
               <input
                 type="number"
                 min="1"
                 max={stockDisponible}
+                disabled={isVariantOutOfStock}
                 value={quantity}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
@@ -342,7 +631,7 @@ export default function ProductDetail() {
                   MozAppearance: "textfield"
                 }}
               />
-              <button onClick={incrementQty} disabled={quantity >= stockDisponible} style={{ width: 44, height: "100%", background: "var(--paper)", border: "none", cursor: quantity >= stockDisponible ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={incrementQty} disabled={quantity >= stockDisponible || isVariantOutOfStock} style={{ width: 44, height: "100%", background: "var(--paper)", border: "none", cursor: quantity >= stockDisponible || isVariantOutOfStock ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Plus size={18} color="var(--ink)" />
               </button>
             </div>
@@ -358,16 +647,19 @@ export default function ProductDetail() {
                 justifyContent: "center", 
                 gap: 8, 
                 fontSize: 16,
-                background: product.stock <= 0 ? "var(--line)" : isMaxStockReached ? "#D97706" : undefined,
-                color: product.stock <= 0 ? "var(--muted)" : undefined,
-                cursor: "pointer"
+                background: (product.stock <= 0 || isVariantOutOfStock) ? "var(--line)" : isMaxStockReached ? "#D97706" : undefined,
+                color: (product.stock <= 0 || isVariantOutOfStock) ? "var(--muted)" : undefined,
+                cursor: (product.stock <= 0 || isVariantOutOfStock) ? "not-allowed" : "pointer"
               }} 
+              disabled={product.stock <= 0 || isVariantOutOfStock}
               onClick={handleAddToCart}
             >
               {added ? (
                 <><CheckCircle size={20} /> Ajouté au panier !</>
+              ) : isVariantOutOfStock ? (
+                <><AlertTriangle size={20} /> {activeVariantName || "Variante"} épuisé(e)</>
               ) : isMaxStockReached ? (
-                <><AlertTriangle size={20} /> Stock max en panier ({qtyInCart}/{product.stock})</>
+                <><AlertTriangle size={20} /> Stock max en panier ({qtyInCart}/{activeVariantStock})</>
               ) : (
                 <><ShoppingBag size={20} /> Ajouter au panier</>
               )}

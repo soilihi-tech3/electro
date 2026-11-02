@@ -2735,3 +2735,50 @@ html[data-theme="dark"] .bs-my-orders-sidebar {
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+
+/* ── PROFESSIONAL A4 INVOICE & DEVIS PRINT STYLES ── */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .bs-invoice-modal-overlay {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+  #invoice-scroll-wrapper {
+    overflow: visible !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+  .bs-invoice-print-area,
+  .bs-invoice-print-area * {
+    visibility: visible !important;
+  }
+  .bs-invoice-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #0F172A !important;
+  }
+  .bs-invoice-no-print {
+    display: none !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}

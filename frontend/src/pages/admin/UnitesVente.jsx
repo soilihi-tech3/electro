@@ -3,8 +3,11 @@ import { toast } from "react-hot-toast";
 import { PlusCircle, Edit, Trash2, Scale, X, CheckCircle, AlertCircle } from "lucide-react";
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
+import { useAuth } from "../../context/AuthContext";
 
 export default function UnitesVente() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("gerer_unites");
   const [unites, setUnites] = useState([]);
   const [modalType, setModalType] = useState(null); // 'create' | 'edit' | null
   const [selectedUnite, setSelectedUnite] = useState(null);
@@ -85,9 +88,15 @@ export default function UnitesVente() {
             Configurez les unités de vente pour vos produits (Kg, Litre, Carton, Sac, Bouteille, Pièce, etc.).
           </p>
         </div>
-        <button className="bs-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12 }} onClick={openCreateModal}>
-          <PlusCircle size={18} /> Ajouter une Unité
-        </button>
+        {canManage ? (
+          <button className="bs-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12 }} onClick={openCreateModal}>
+            <PlusCircle size={18} /> Ajouter une Unité
+          </button>
+        ) : (
+          <span style={{ fontSize: 13, background: "var(--paper)", border: "1px solid var(--line)", padding: "7px 14px", borderRadius: 10, color: "var(--muted)", fontWeight: 600 }}>
+            Mode consultation (Lecture seule)
+          </span>
+        )}
       </div>
 
       {/* UNITÉS TABLE */}
@@ -126,14 +135,18 @@ export default function UnitesVente() {
                   </td>
 
                   <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                      <button onClick={() => openEditModal(u)} className="bs-icon-btn" title="Modifier">
-                        <Edit size={16} />
-                      </button>
-                      <button onClick={() => handleDelete(u.id)} className="bs-icon-btn" title="Supprimer" style={{ color: "#B4483A" }}>
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
+                    {canManage ? (
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button onClick={() => openEditModal(u)} className="bs-icon-btn" title="Modifier">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(u.id)} className="bs-icon-btn" title="Supprimer" style={{ color: "#B4483A" }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>Lecture seule</span>
+                    )}
                   </td>
                 </tr>
               ))

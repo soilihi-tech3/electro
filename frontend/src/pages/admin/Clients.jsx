@@ -5,8 +5,11 @@ import { UserCheck, Edit, Trash2, Ban, CheckCircle, Search, UserPlus, Key, Mail,
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import { useCart } from "../../context/CartContext.jsx";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AdminClients() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("gerer_clients");
   const { showToast } = useCart();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,13 +142,19 @@ export default function AdminClients() {
           </p>
         </div>
 
-        <button
-          className="bs-btn-primary"
-          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12 }}
-          onClick={openCreateModal}
-        >
-          <UserPlus size={18} /> Ajouter un client
-        </button>
+        {canManage ? (
+          <button
+            className="bs-btn-primary"
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12 }}
+            onClick={openCreateModal}
+          >
+            <UserPlus size={18} /> Ajouter un client
+          </button>
+        ) : (
+          <span style={{ fontSize: 13, background: "var(--paper)", border: "1px solid var(--line)", padding: "7px 14px", borderRadius: 10, color: "var(--muted)", fontWeight: 600 }}>
+            Mode consultation (Lecture seule)
+          </span>
+        )}
       </div>
 
       {/* ── KPI STATS CARDS ── */}
@@ -314,31 +323,35 @@ export default function AdminClients() {
                       </td>
 
                       <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                          <button
-                            onClick={() => openEditModal(c)}
-                            className="bs-icon-btn"
-                            title="Modifier les coordonnées & le mot de passe"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() => toggleStatus(c)}
-                            className="bs-icon-btn"
-                            title={isActif ? "Suspendre l'accès" : "Réactiver l'accès"}
-                            style={{ color: isActif ? "#D97706" : "#1F4D3A" }}
-                          >
-                            {isActif ? <Ban size={16} /> : <CheckCircle size={16} />}
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c.id, c.nom)}
-                            className="bs-icon-btn"
-                            title="Supprimer définitivement"
-                            style={{ color: "#B4483A" }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        {canManage ? (
+                          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                            <button
+                              onClick={() => openEditModal(c)}
+                              className="bs-icon-btn"
+                              title="Modifier les coordonnées & le mot de passe"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => toggleStatus(c)}
+                              className="bs-icon-btn"
+                              title={isActif ? "Suspendre l'accès" : "Réactiver l'accès"}
+                              style={{ color: isActif ? "#D97706" : "#1F4D3A" }}
+                            >
+                              {isActif ? <Ban size={16} /> : <CheckCircle size={16} />}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(c.id, c.nom)}
+                              className="bs-icon-btn"
+                              title="Supprimer définitivement"
+                              style={{ color: "#B4483A" }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>Lecture seule</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -414,7 +427,14 @@ export default function AdminClients() {
 
                 <div className="bs-field">
                   <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 4 }}>Téléphone *</label>
-                  <input className="bs-input" value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} placeholder="ex: +269 332 10 00" required />
+                  <input
+                    type="tel"
+                    className="bs-input"
+                    value={form.telephone}
+                    onChange={(e) => setForm({ ...form, telephone: e.target.value.replace(/\D/g, "") })}
+                    placeholder="ex: 3321000 (chiffres uniquement)"
+                    required
+                  />
                 </div>
               </div>
 

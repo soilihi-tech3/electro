@@ -290,6 +290,32 @@ async function ensureColumns() {
       console.log("[MIGRATION] Ajout colonne marque_id sur products");
       await sequelize.query(`ALTER TABLE products ADD COLUMN marque_id INT NULL;`);
     }
+    if (tableProducts["visible_en_ligne"] === undefined) {
+      console.log("[MIGRATION] Ajout colonne visible_en_ligne sur products");
+      await sequelize.query(`ALTER TABLE products ADD COLUMN visible_en_ligne TINYINT(1) DEFAULT 1;`);
+    }
+    if (tableProducts["dernier_prix"] === undefined) {
+      console.log("[MIGRATION] Ajout colonne dernier_prix sur products");
+      await sequelize.query(`ALTER TABLE products ADD COLUMN dernier_prix DECIMAL(10, 2) NULL;`);
+    }
+    if (tableProducts["variantes_couleurs"] === undefined) {
+      console.log("[MIGRATION] Ajout colonne variantes_couleurs sur products");
+      await sequelize.query(`ALTER TABLE products ADD COLUMN variantes_couleurs LONGTEXT NULL;`);
+    }
+    if (tableProducts["variantes_options"] === undefined) {
+      console.log("[MIGRATION] Ajout colonne variantes_options sur products");
+      await sequelize.query(`ALTER TABLE products ADD COLUMN variantes_options LONGTEXT NULL;`);
+    }
+    if (tableProducts["galerie_photos"] === undefined) {
+      console.log("[MIGRATION] Ajout colonne galerie_photos sur products");
+      await sequelize.query(`ALTER TABLE products ADD COLUMN galerie_photos LONGTEXT NULL;`);
+    }
+    if (tableProducts["cree_par_id"] === undefined) {
+      await sequelize.query(`ALTER TABLE products ADD COLUMN cree_par_id INT NULL;`);
+      await sequelize.query(`ALTER TABLE products ADD COLUMN cree_par_nom VARCHAR(150) NULL;`);
+      await sequelize.query(`ALTER TABLE products ADD COLUMN modifie_par_id INT NULL;`);
+      await sequelize.query(`ALTER TABLE products ADD COLUMN modifie_par_nom VARCHAR(150) NULL;`);
+    }
 
     const tableOrders = await queryInterface.describeTable("orders");
     if (!tableOrders["stripe_session_id"]) {
@@ -315,6 +341,31 @@ async function ensureColumns() {
     } else if (!tableOrders["receipt_url"]) {
       console.log("[MIGRATION] Ajout colonne receipt_url");
       await sequelize.query(`ALTER TABLE orders ADD COLUMN receipt_url VARCHAR(500) NULL;`);
+    }
+
+    if (tableOrders["type_document"] === undefined) {
+      console.log("[MIGRATION] Ajout colonne type_document sur orders");
+      await sequelize.query(`ALTER TABLE orders ADD COLUMN type_document VARCHAR(30) DEFAULT 'commande';`);
+    }
+    if (tableOrders["cree_par_id"] === undefined) {
+      await sequelize.query(`ALTER TABLE orders ADD COLUMN cree_par_id INT NULL;`);
+      await sequelize.query(`ALTER TABLE orders ADD COLUMN cree_par_nom VARCHAR(150) NULL;`);
+      await sequelize.query(`ALTER TABLE orders ADD COLUMN modifie_par_id INT NULL;`);
+      await sequelize.query(`ALTER TABLE orders ADD COLUMN modifie_par_nom VARCHAR(150) NULL;`);
+    }
+
+    const tableAchats = await queryInterface.describeTable("achats");
+    if (tableAchats && tableAchats["cree_par_id"] === undefined) {
+      await sequelize.query(`ALTER TABLE achats ADD COLUMN cree_par_id INT NULL;`).catch(() => {});
+      await sequelize.query(`ALTER TABLE achats ADD COLUMN cree_par_nom VARCHAR(150) NULL;`).catch(() => {});
+      await sequelize.query(`ALTER TABLE achats ADD COLUMN modifie_par_id INT NULL;`).catch(() => {});
+      await sequelize.query(`ALTER TABLE achats ADD COLUMN modifie_par_nom VARCHAR(150) NULL;`).catch(() => {});
+    }
+
+    const tableCategories = await queryInterface.describeTable("categories");
+    if (tableCategories && tableCategories["cree_par_id"] === undefined) {
+      await sequelize.query(`ALTER TABLE categories ADD COLUMN cree_par_id INT NULL;`).catch(() => {});
+      await sequelize.query(`ALTER TABLE categories ADD COLUMN cree_par_nom VARCHAR(150) NULL;`).catch(() => {});
     }
 
     const tableUsers = await queryInterface.describeTable("users");

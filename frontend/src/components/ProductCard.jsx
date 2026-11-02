@@ -20,6 +20,23 @@ export default function ProductCard({ product, isFavorisPage }) {
   const mainImage = product.imageUrl || defaultImg;
   const secondaryImage = product.imageUrl2 || null;
 
+  const parseJsonSafe = (val, fallback) => {
+    if (!val) return fallback;
+    if (typeof val === "object") return val;
+    if (typeof val === "string") {
+      try {
+        const p = JSON.parse(val);
+        return typeof p === "string" ? parseJsonSafe(p, fallback) : (p ?? fallback);
+      } catch {
+        return fallback;
+      }
+    }
+    return fallback;
+  };
+
+  const parsedColors = parseJsonSafe(product.variantesCouleurs, []);
+  const availableColors = Array.isArray(parsedColors) ? parsedColors.filter(c => c && c.nom) : [];
+
   // User-scoped favorites logic
   const [isFavorite, setIsFavorite] = useState(false);
   const getFavKey = () => (user && user.id ? `favorites_user_${user.id}` : "favorites_guest");
@@ -58,10 +75,6 @@ export default function ProductCard({ product, isFavorisPage }) {
   const itemInCart = cart.find((l) => l.product.id === product.id);
   const qtyInCart = itemInCart ? itemInCart.quantite : 0;
   const isMaxStockReached = !isOutOfStock && qtyInCart >= product.stock;
-
-  const weightUnitText = product.unite 
-    ? `/ ${product.poids && product.poids !== "1" ? `${product.poids} ` : ""}${product.unite}`
-    : "";
 
   return (
     <div className="bs-card" onClick={() => navigate(`/produit/${product.id}`, { state: { product } })} style={{ opacity: isOutOfStock ? 0.75 : 1, position: "relative" }}>
@@ -173,19 +186,34 @@ export default function ProductCard({ product, isFavorisPage }) {
       </div>
 
       <div className="bs-card-body">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 4 }}>
-          <span className="cat-name" style={{ margin: 0 }}>{product.Category?.nom || "Électrique"}</span>
-          {(product.marque?.nom || product.Marque?.nom) && (
-            <span style={{ 
-              fontSize: 11, fontWeight: 700, color: "var(--forest-dark)", 
-              background: "var(--forest-light)", padding: "2px 8px", borderRadius: 10,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "50%"
-            }}>
-              {product.marque?.nom || product.Marque?.nom}
-            </span>
-          )}
-        </div>
         <div className="nom">{product.nom}</div>
+
+        {availableColors.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4, marginBottom: 2 }}>
+            <div style={{ display: "flex", gap: 3.5, alignItems: "center" }}>
+              {availableColors.slice(0, 4).map((c, i) => (
+                <span 
+                  key={i} 
+                  title={c.nom}
+                  style={{
+                    width: 11, height: 11, borderRadius: "50%",
+                    background: c.couleur || "#163424",
+                    border: "1px solid rgba(0,0,0,0.18)",
+                    display: "inline-block"
+                  }} 
+                />
+              ))}
+            </div>
+            {availableColors.length > 4 && (
+              <span style={{ fontSize: 10.5, color: "var(--muted)", fontWeight: 700 }}>
+                +{availableColors.length - 4}
+              </span>
+            )}
+            <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 2 }}>
+              {availableColors.length} couleur{availableColors.length > 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
 
         <div className="bs-price-row">
           {hasPromo && product.prixPromo ? (
@@ -195,11 +223,6 @@ export default function ProductCard({ product, isFavorisPage }) {
             </>
           ) : (
             <span className="bs-price">{fcfa(product.prix)}</span>
-          )}
-          {weightUnitText && (
-            <span style={{ color: "var(--muted)", fontSize: 12.5, fontWeight: 600 }}>
-              {weightUnitText}
-            </span>
           )}
         </div>
 

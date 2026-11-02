@@ -6,8 +6,11 @@ import api from "../../api";
 import ImageUploader from "../../components/ImageUploader.jsx";
 import TablePagination from "../../components/TablePagination.jsx";
 import { subscribeRealtime } from "../../utils/realtime.js";
+import { useAuth } from "../../context/AuthContext";
 
 export default function AdminCategories() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("gerer_categories");
   const [activeTab, setActiveTab] = useState("liste"); // "liste" | "ajout" | "familles"
   const [categories, setCategories] = useState([]);
   const [familles, setFamilles] = useState([]);
@@ -234,20 +237,22 @@ export default function AdminCategories() {
             <List size={15} style={{ verticalAlign: "-2px", marginRight: 6 }} /> Catégories ({categories.length})
           </button>
 
-          <button
-            className={`bs-btn-primary ${activeTab === "ajout" ? "" : "inactive"}`}
-            style={{
-              padding: "8px 18px", borderRadius: 24, fontSize: 13,
-              background: activeTab === "ajout" ? "var(--forest)" : "transparent",
-              color: activeTab === "ajout" ? "#fff" : "var(--muted)", boxShadow: "none"
-            }}
-            onClick={() => {
-              if (!editingId) { setCategoryForm(initialCategoryForm); }
-              setActiveTab("ajout");
-            }}
-          >
-            <PlusCircle size={15} style={{ verticalAlign: "-2px", marginRight: 6 }} /> {editingId ? "Modifier catégorie" : "Ajouter catégorie"}
-          </button>
+          {canManage && (
+            <button
+              className={`bs-btn-primary ${activeTab === "ajout" ? "" : "inactive"}`}
+              style={{
+                padding: "8px 18px", borderRadius: 24, fontSize: 13,
+                background: activeTab === "ajout" ? "var(--forest)" : "transparent",
+                color: activeTab === "ajout" ? "#fff" : "var(--muted)", boxShadow: "none"
+              }}
+              onClick={() => {
+                if (!editingId) { setCategoryForm(initialCategoryForm); }
+                setActiveTab("ajout");
+              }}
+            >
+              <PlusCircle size={15} style={{ verticalAlign: "-2px", marginRight: 6 }} /> {editingId ? "Modifier catégorie" : "Ajouter catégorie"}
+            </button>
+          )}
 
           <button
             className={`bs-btn-primary ${activeTab === "familles" ? "" : "inactive"}`}
@@ -334,8 +339,14 @@ export default function AdminCategories() {
                     </span>
                   </td>
                   <td>
-                    <button className="bs-icon-btn" title="Modifier" onClick={() => startEditCategory(c)}><Pencil size={15} /></button>{" "}
-                    <button className="bs-icon-btn" title="Supprimer" style={{ color: "#B4483A" }} onClick={() => deleteCategory(c.id)}><Trash2 size={15} /></button>
+                    {canManage ? (
+                      <>
+                        <button className="bs-icon-btn" title="Modifier" onClick={() => startEditCategory(c)}><Pencil size={15} /></button>{" "}
+                        <button className="bs-icon-btn" title="Supprimer" style={{ color: "#B4483A" }} onClick={() => deleteCategory(c.id)}><Trash2 size={15} /></button>
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>Lecture seule</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -436,12 +447,13 @@ export default function AdminCategories() {
 
       {/* ONGLET 3: GESTION DES FAMILLES DE PRODUITS */}
       {activeTab === "familles" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: canManage ? "1fr 1fr" : "1fr", gap: 24 }}>
           {/* FORMULAIRE D'AJOUT / MODIFICATION DE FAMILLE */}
-          <div className="bs-panel">
-            <h3 style={{ marginTop: 0, fontSize: 18, color: "var(--forest-dark)", borderBottom: "1px solid var(--line)", paddingBottom: 10, marginBottom: 16 }}>
-              {editingFamilleId ? "Modifier la famille" : "Ajouter une famille de produit"}
-            </h3>
+          {canManage && (
+            <div className="bs-panel">
+              <h3 style={{ marginTop: 0, fontSize: 18, color: "var(--forest-dark)", borderBottom: "1px solid var(--line)", paddingBottom: 10, marginBottom: 16 }}>
+                {editingFamilleId ? "Modifier la famille" : "Ajouter une famille de produit"}
+              </h3>
 
             <form onSubmit={handleFamilleSubmit} className="bs-auth-form" style={{ gap: 14 }}>
               <div className="bs-input-group">
@@ -493,6 +505,7 @@ export default function AdminCategories() {
               </div>
             </form>
           </div>
+          )}
 
           {/* LISTE DES FAMILLES */}
           <div className="bs-panel" style={{ padding: 0, overflow: "hidden" }}>
@@ -521,8 +534,14 @@ export default function AdminCategories() {
                       <td style={{ fontWeight: 700, color: "var(--ink)" }}>{fam.nom}</td>
                       <td style={{ fontSize: 12.5, color: "var(--muted)" }}>{fam.description || "—"}</td>
                       <td>
-                        <button className="bs-icon-btn" title="Modifier" onClick={() => startEditFamille(fam)}><Pencil size={15} /></button>{" "}
-                        <button className="bs-icon-btn" title="Supprimer" style={{ color: "#B4483A" }} onClick={() => deleteFamille(fam.id)}><Trash2 size={15} /></button>
+                        {canManage ? (
+                          <>
+                            <button className="bs-icon-btn" title="Modifier" onClick={() => startEditFamille(fam)}><Pencil size={15} /></button>{" "}
+                            <button className="bs-icon-btn" title="Supprimer" style={{ color: "#B4483A" }} onClick={() => deleteFamille(fam.id)}><Trash2 size={15} /></button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>Lecture seule</span>
+                        )}
                       </td>
                     </tr>
                   ))

@@ -30,17 +30,23 @@ export function CartProvider({ children }) {
     }
   }
 
+  function getItemKey(product) {
+    if (!product) return "";
+    return product.cartItemId || String(product.id);
+  }
+
   function addToCart(product, quantite = 1) {
     if (!product) return false;
 
+    const itemKey = getItemKey(product);
     const stockMax = Number(product.stock ?? 0);
-    const itemExistant = cart.find((l) => l.product.id === product.id);
+    const itemExistant = cart.find((l) => getItemKey(l.product) === itemKey);
     const dejaEnPanier = itemExistant ? itemExistant.quantite : 0;
 
     // Case 1: Product out of stock completely
     if (stockMax <= 0) {
       showToast(
-        `Desolé, le produit "${product.nom}" est actuellement en rupture de stock.`,
+        `Désolé, le produit "${product.nom}" est actuellement en rupture de stock.`,
         "error"
       );
       return false;
@@ -62,7 +68,7 @@ export function CartProvider({ children }) {
       const qteAjoutee = stockMax - dejaEnPanier;
       setCart((prev) =>
         prev.map((l) =>
-          l.product.id === product.id ? { ...l, quantite: stockMax } : l
+          getItemKey(l.product) === itemKey ? { ...l, quantite: stockMax } : l
         )
       );
       showToast(
@@ -76,7 +82,7 @@ export function CartProvider({ children }) {
     setCart((prev) => {
       if (itemExistant) {
         return prev.map((l) =>
-          l.product.id === product.id
+          getItemKey(l.product) === itemKey
             ? { ...l, quantite: nouvelleQuantite }
             : l
         );
@@ -96,11 +102,12 @@ export function CartProvider({ children }) {
     return true;
   }
 
-  function updateQuantite(productId, delta) {
+  function updateQuantite(targetId, delta) {
     setCart((prev) => {
-      const item = prev.find((l) => l.product.id === productId);
+      const item = prev.find((l) => getItemKey(l.product) === String(targetId) || l.product.id === targetId);
       if (!item) return prev;
 
+      const currentKey = getItemKey(item.product);
       const stockMax = Number(item.product.stock ?? 0);
       const nouvelleQte = item.quantite + delta;
 
@@ -114,24 +121,24 @@ export function CartProvider({ children }) {
 
       return prev
         .map((l) =>
-          l.product.id === productId ? { ...l, quantite: nouvelleQte } : l
+          getItemKey(l.product) === currentKey ? { ...l, quantite: nouvelleQte } : l
         )
         .filter((l) => l.quantite > 0);
     });
   }
 
-  function setExactQuantite(productId, targetValue) {
+  function setExactQuantite(targetId, targetValue) {
     const parsed = parseInt(targetValue, 10);
     if (isNaN(parsed) || parsed < 1) {
-      // Remove or reset to 1
-      removeFromCart(productId);
+      removeFromCart(targetId);
       return;
     }
 
     setCart((prev) => {
-      const item = prev.find((l) => l.product.id === productId);
+      const item = prev.find((l) => getItemKey(l.product) === String(targetId) || l.product.id === targetId);
       if (!item) return prev;
 
+      const currentKey = getItemKey(item.product);
       const stockMax = Number(item.product.stock ?? 0);
       let nouvelleQte = parsed;
 
@@ -144,13 +151,13 @@ export function CartProvider({ children }) {
       }
 
       return prev.map((l) =>
-        l.product.id === productId ? { ...l, quantite: nouvelleQte } : l
+        getItemKey(l.product) === currentKey ? { ...l, quantite: nouvelleQte } : l
       );
     });
   }
 
-  function removeFromCart(productId) {
-    setCart((prev) => prev.filter((l) => l.product.id !== productId));
+  function removeFromCart(targetId) {
+    setCart((prev) => prev.filter((l) => getItemKey(l.product) !== String(targetId) && l.product.id !== targetId));
   }
 
   function clearCart() {

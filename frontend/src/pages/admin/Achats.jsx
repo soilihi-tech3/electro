@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from "react";
-import { PlusCircle, ShoppingBag, Building, DollarSign, Calendar, Package, X, CheckCircle, AlertCircle, Search } from "lucide-react";
+import { PlusCircle, ShoppingBag, Building, DollarSign, Calendar, Package, X, CheckCircle, AlertCircle, Search, Edit2, Trash2 } from "lucide-react";
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
+import { toast } from "react-hot-toast";
 
 import { formatPrice as fcfa } from "../../utils/currency.js";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Achats() {
+  const { hasPerm } = useAuth();
+  const canManage = hasPerm("gerer_achats");
   const [achats, setAchats] = useState([]);
   const [products, setProducts] = useState([]);
   const [fournisseurs, setFournisseurs] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingAchat, setEditingAchat] = useState(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({
     productId: "", fournisseurId: "", quantite: 1, prixAchatUnitaire: "", notes: ""
@@ -36,14 +41,40 @@ export default function Achats() {
 
   const totalDepensesAchats = filteredAchats.reduce((sum, a) => sum + Number(a.totalAchat || 0), 0);
 
-  function openModal() {
+  function openCreateModal() {
+    setEditingAchat(null);
     setForm({ productId: products[0]?.id || "", fournisseurId: "", quantite: 1, prixAchatUnitaire: "", notes: "" });
     setErreur("");
     setSucces("");
     setModalOpen(true);
   }
 
-  async function handleCreate(e) {
+  function openEditModal(achat) {
+    setEditingAchat(achat);
+    setForm({
+      productId: achat.productId || achat.product?.id || "",
+      fournisseurId: achat.fournisseurId || "",
+      quantite: achat.quantite || 1,
+      prixAchatUnitaire: achat.prixAchatUnitaire || "",
+      notes: achat.notes || ""
+    });
+    setErreur("");
+    setSucces("");
+    setModalOpen(true);
+  }
+
+  async function handleDelete(achat) {
+    if (!confirm(`Supprimer cet achat de ${achat.quantite} unité(s) pour "${achat.product?.nom}" ?\nLe stock sera automatiquement recalculé et décrémenté.`)) return;
+    try {
+      await api.delete(`/admin/achats/${achat.id}`);
+      toast.success("Achat supprimé et stock recalculé avec succès.");
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression.");
+    }
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!form.productId) {
       setErreur("Veuillez sélectionner un produit.");
@@ -52,9 +83,14 @@ export default function Achats() {
     setErreur("");
     setSucces("");
     try {
-      await api.post("/admin/achats", form);
-      setSucces("Approvisionnement enregistré et stock mis à jour avec succès !");
-      setTimeout(() => { setModalOpen(false); load(); }, 900);
+      if (editingAchat) {
+        await api.put(`/admin/achats/${editingAchat.id}`, form);
+        setSucces("Achat modifié et ajustement de stock appliqué avec succès !");
+      } else {
+        await api.post("/admin/achats", form);
+        setSucces("Approvisionnement enregistré et stock mis à jour avec succès !");
+      }
+      setTimeout(() => { setModalOpen(false); load(); }, 700);
     } catch (err) {
       setErreur(err.response?.data?.message || "Erreur lors de l'enregistrement de l'achat.");
     }
@@ -62,16 +98,13 @@ export default function Achats() {
 
   return (
     <>
-      <div className="bs-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+      <div className="bs-toolbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 14 }}>
         <div>
           <h1 style={{ fontSize: 26, margin: 0, color: "var(--forest-dark)" }}>Achats & Approvisionnements</h1>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 14 }}>
-            Enregistrez les achats auprès des fournisseurs, suivez les prix d'achat et mettez à jour les stocks.
+            Journal automatique de tous les approvisionnements et achats de stocks générés dès l'ajout ou le réassort de vos produits.
           </p>
         </div>
-        <button className="bs-btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 12 }} onClick={openModal}>
-          <PlusCircle size={18} /> Nouvel Achat / Restock
-        </button>
       </div>
 
       {/* KPI SUMMARY CARDS */}
@@ -120,14 +153,16 @@ export default function Achats() {
               <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Produit</th>
               <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Fournisseur</th>
               <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Quantité</th>
-              <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Prix Achat Unitaire</th>
+              <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Prix Achat Unit.</th>
               <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", textAlign: "right" }}>Coût Total</th>
+              <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Auteur / Audit</th>
+              <th style={{ padding: "14px 18px", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", textAlign: "center" }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredAchats.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: 36, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
+                <td colSpan={8} style={{ padding: 36, textAlign: "center", color: "var(--muted)", fontSize: 14 }}>
                   Aucun achat / réapprovisionnement enregistré.
                 </td>
               </tr>
@@ -146,7 +181,7 @@ export default function Achats() {
                         <img src={a.product?.imageUrl || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=60&q=80"} alt={a.product?.nom} style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover" }} />
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--ink)" }}>{a.product?.nom || "Produit supprimé"}</div>
-                          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Nouveau Stock: {a.product?.stock}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Stock actuel: {a.product?.stock}</div>
                         </div>
                       </div>
                     </td>
@@ -174,6 +209,48 @@ export default function Achats() {
                         {fcfa(a.totalAchat)}
                       </div>
                     </td>
+
+                    <td style={{ padding: "14px 18px" }}>
+                      <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600 }}>
+                        {a.creeParNom || "Admin"}
+                      </div>
+                      {a.modifieParNom && (
+                        <div style={{ fontSize: 10.5, color: "var(--muted)" }}>
+                          Modif: {a.modifieParNom}
+                        </div>
+                      )}
+                    </td>
+
+                    <td style={{ padding: "14px 18px", textAlign: "center", whiteSpace: "nowrap" }}>
+                      {canManage ? (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                          <button
+                            className="bs-icon-btn"
+                            onClick={() => openEditModal(a)}
+                            style={{
+                              width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                              background: "#F8FAFC", border: "1px solid #CBD5E1", color: "var(--forest-dark)", cursor: "pointer"
+                            }}
+                            title="Modifier cet achat"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                          <button
+                            className="bs-icon-btn"
+                            onClick={() => handleDelete(a)}
+                            style={{
+                              width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center",
+                              background: "#FEF2F2", border: "1px solid #FECACA", color: "#DC2626", cursor: "pointer"
+                            }}
+                            title="Supprimer cet achat"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic" }}>Lecture seule</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })
@@ -189,13 +266,13 @@ export default function Achats() {
         />
       </div>
 
-      {/* MODAL NOUVEL ACHAT */}
+      {/* MODAL AJOUT / ÉDITION ACHAT */}
       {modalOpen && (
         <div className="bs-modal-bg" onClick={() => setModalOpen(false)}>
           <div className="bs-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, width: "90%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 style={{ margin: 0, fontSize: 18, color: "var(--forest-dark)" }}>
-                Enregistrer un Achat / Restock
+                {editingAchat ? `Modifier l'Achat #${editingAchat.id}` : "Enregistrer un Achat / Restock"}
               </h2>
               <button onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", cursor: "pointer" }}>
                 <X size={20} />
@@ -213,12 +290,13 @@ export default function Achats() {
               </div>
             )}
 
-            <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="bs-field">
                 <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 4 }}>Sélectionner le Produit *</label>
                 <select
                   className="bs-select"
                   value={form.productId}
+                  disabled={!!editingAchat}
                   onChange={(e) => {
                     const selectedProd = products.find(p => p.id === Number(e.target.value));
                     setForm({
@@ -244,8 +322,8 @@ export default function Achats() {
                 </div>
 
                 <div className="bs-field">
-                  <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 4 }}>Prix d'Achat Unitaire (€) *</label>
-                  <input className="bs-input" type="number" step="0.01" min="0" value={form.prixAchatUnitaire} onChange={(e) => setForm({ ...form, prixAchatUnitaire: e.target.value })} placeholder="ex: 12.50" required />
+                  <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 4 }}>Prix d'Achat Unitaire *</label>
+                  <input className="bs-input" type="number" step="0.01" min="0" value={form.prixAchatUnitaire} onChange={(e) => setForm({ ...form, prixAchatUnitaire: e.target.value })} placeholder="ex: 2500" required />
                 </div>
               </div>
 
@@ -269,7 +347,7 @@ export default function Achats() {
                 <textarea className="bs-input" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="ex: Bon de livraison #BL-9921" />
               </div>
 
-              {/* CALCUATED TOTAL PREVIEW */}
+              {/* CALCULATED TOTAL PREVIEW */}
               <div style={{ background: "var(--paper)", padding: 12, borderRadius: 10, border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>Coût Total de l'Achat :</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: "var(--forest-dark)" }}>
@@ -282,7 +360,7 @@ export default function Achats() {
                   Annuler
                 </button>
                 <button type="submit" className="bs-btn-primary" style={{ flex: 1, borderRadius: 10 }}>
-                  Enregistrer l'Achat
+                  {editingAchat ? "Enregistrer les Modifications" : "Enregistrer l'Achat"}
                 </button>
               </div>
             </form>

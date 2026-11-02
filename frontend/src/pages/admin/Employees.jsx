@@ -1,18 +1,94 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { PlusCircle, Edit, Trash2, Shield, Lock, CheckCircle, Ban, User, AlertCircle, X, ShieldCheck, UserCheck, Key, Settings, Layers, Package, ShoppingCart, Image, Eye, EyeOff, Copy, RefreshCw, Send } from "lucide-react";
+import { 
+  PlusCircle, Edit, Trash2, Shield, Lock, CheckCircle, Ban, User, AlertCircle, X, 
+  ShieldCheck, UserCheck, Key, Settings, Layers, Package, ShoppingCart, Image, 
+  Eye, EyeOff, Copy, RefreshCw, Send, CreditCard, FileText, ShoppingBag, TrendingUp,
+  CheckSquare, Square, Truck, Scale, Award, Users
+} from "lucide-react";
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import { useAuth } from "../../context/AuthContext.jsx";
 
-const PERMISSIONS_LIST = [
-  { key: "voir_dashboard", label: "Tableau de bord Opérationnel", desc: "Aperçu des performances et commandes attribuées", icon: Settings },
-  { key: "gerer_banners", label: "Bannières d'accueil & Side Banners", desc: "Gestion des carousels visuels et promotions", icon: Image },
-  { key: "gerer_categories", label: "Catégories & Familles de produits", desc: "Création et modification des catégories", icon: Layers },
-  { key: "gerer_produits", label: "Gestion des Produits & Stock", desc: "Ajout, modification et gestion du stock", icon: Package },
-  { key: "gerer_commandes", label: "Gestion des Commandes", desc: "Traitement, affectation et suivi des livraisons", icon: ShoppingCart },
-  { key: "gerer_parametres", label: "Paramètres Boutique", desc: "Coordonnées, adresses et réglages généraux", icon: Settings },
+export const PERMISSION_CATEGORIES = [
+  {
+    id: "caisse_ventes",
+    titre: "Caisse & Ventes",
+    desc: "Point de vente, encaissements et suivi des ventes",
+    icon: ShoppingCart,
+    color: "#166534",
+    bg: "#DCFCE7",
+    permissions: [
+      { key: "gerer_caisse", label: "Accès Caisse (POS)", desc: "Encaisser les ventes comptoir au point de vente" },
+      { key: "voir_ventes", label: "Voir ses propres ventes", desc: "Consulter l'historique de ses ventes uniquement" },
+      { key: "voir_toutes_ventes", label: "Voir TOUTES les ventes", desc: "Consulter l'ensemble des ventes de tous les employés" },
+      { key: "encaisser_paiement", label: "Encaisser un paiement", desc: "Enregistrer un paiement ou solde de dette client" },
+      { key: "modifier_vente", label: "Modifier une vente directe", desc: "Ajuster les articles, prix et quantités vendus" },
+      { key: "supprimer_vente", label: "Supprimer une vente", desc: "Annuler une vente et remettre les articles en stock" },
+      { key: "gerer_devis", label: "Devis & Proforma", desc: "Créer, convertir, modifier et supprimer des devis" },
+    ]
+  },
+  {
+    id: "catalogue",
+    titre: "Catalogue & Produits",
+    desc: "Produits, marques, catégories et unités",
+    icon: Package,
+    color: "#1E40AF",
+    bg: "#DBEAFE",
+    permissions: [
+      { key: "voir_produits", label: "Voir les produits (Lecture seule)", desc: "Consulter les fiches produits et stocks" },
+      { key: "gerer_produits", label: "Gérer les produits (Ajout/Modif/Suppr)", desc: "Créer, modifier prix/stocks et supprimer des produits" },
+      { key: "voir_categories", label: "Voir les catégories (Lecture seule)", desc: "Consulter l'arborescence des catégories" },
+      { key: "gerer_categories", label: "Gérer les catégories", desc: "Ajouter, modifier ou supprimer des catégories" },
+      { key: "voir_marques", label: "Voir les marques (Lecture seule)", desc: "Consulter le registre des marques" },
+      { key: "gerer_marques", label: "Gérer les marques", desc: "Ajouter, modifier ou supprimer des marques" },
+      { key: "voir_unites", label: "Voir les unités de vente (Lecture seule)", desc: "Consulter les unités de mesure (Kg, Litre, etc.)" },
+      { key: "gerer_unites", label: "Gérer les unités de vente", desc: "Ajouter, modifier ou supprimer des unités" },
+    ]
+  },
+  {
+    id: "achats",
+    titre: "Fournisseurs & Approvisionnements",
+    desc: "Achats, réceptions et contacts fournisseurs",
+    icon: ShoppingBag,
+    color: "#854D0E",
+    bg: "#FEF9C3",
+    permissions: [
+      { key: "voir_fournisseurs", label: "Voir les fournisseurs (Lecture seule)", desc: "Consulter les coordonnées des fournisseurs" },
+      { key: "gerer_fournisseurs", label: "Gérer les fournisseurs", desc: "Ajouter, modifier et supprimer des fournisseurs" },
+      { key: "voir_achats", label: "Voir les achats (Lecture seule)", desc: "Consulter le journal des réceptions et achats" },
+      { key: "gerer_achats", label: "Gérer les achats & réceptions", desc: "Enregistrer ou supprimer des réapprovisionnements" },
+    ]
+  },
+  {
+    id: "clients_web",
+    titre: "Clients & Commandes Web",
+    desc: "Fichier clients et commandes e-commerce",
+    icon: Users,
+    color: "#6B21A8",
+    bg: "#F3E8FF",
+    permissions: [
+      { key: "voir_clients", label: "Voir les clients (Lecture seule)", desc: "Consulter la base clients et coordonnées" },
+      { key: "gerer_clients", label: "Gérer les clients", desc: "Créer, modifier les coordonnées et statuts clients" },
+      { key: "gerer_commandes", label: "Gérer les commandes web", desc: "Valider, assigner et traiter les livraisons en ligne" },
+    ]
+  },
+  {
+    id: "rapports_admin",
+    titre: "Rapports & Paramètres",
+    desc: "Bilan financier, statistiques et configuration",
+    icon: TrendingUp,
+    color: "#991B1B",
+    bg: "#FEE2E2",
+    permissions: [
+      { key: "voir_dashboard", label: "Tableau de bord général", desc: "Aperçu global des indicateurs et graphiques" },
+      { key: "voir_bilan", label: "Bilan Financier & Rentabilité", desc: "Consulter le CA, dépenses, marges nettes et dettes" },
+      { key: "gerer_parametres", label: "Paramètres Boutique", desc: "Coordonnées, devise et réglages généraux" },
+    ]
+  }
 ];
+
+export const ALL_PERMISSION_KEYS = PERMISSION_CATEGORIES.flatMap(c => c.permissions.map(p => p.key));
 
 export default function AdminEmployees() {
   const { user: currentUser } = useAuth();
@@ -169,6 +245,164 @@ export default function AdminEmployees() {
         return { ...prev, permissions: [...currentPerms, key] };
       }
     });
+  }
+
+  function toggleCategory(cat) {
+    const catKeys = cat.permissions.map(p => p.key);
+    setForm((prev) => {
+      const currentPerms = prev.permissions || [];
+      const hasAll = catKeys.every(k => currentPerms.includes(k));
+      let newPerms;
+      if (hasAll) {
+        newPerms = currentPerms.filter(k => !catKeys.includes(k));
+      } else {
+        newPerms = Array.from(new Set([...currentPerms, ...catKeys]));
+      }
+      return { ...prev, permissions: newPerms };
+    });
+  }
+
+  function toggleAllPermissions() {
+    setForm((prev) => {
+      const currentPerms = prev.permissions || [];
+      const hasAll = ALL_PERMISSION_KEYS.every(k => currentPerms.includes(k));
+      return {
+        ...prev,
+        permissions: hasAll ? [] : [...ALL_PERMISSION_KEYS]
+      };
+    });
+  }
+
+  function renderPermissionsSelector() {
+    const activeCount = (form.permissions || []).length;
+    const allCount = ALL_PERMISSION_KEYS.length;
+    const isAllSelected = allCount > 0 && activeCount === allCount;
+
+    return (
+      <div style={{ marginTop: 10, background: "var(--paper)", padding: 16, borderRadius: 16, border: "1px solid var(--line)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 13.5, color: "var(--forest-dark)" }}>
+              Droits d'accès granulaires ({activeCount}/{allCount} actifs)
+            </div>
+            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+              Configurez précisément ce que cet employé peut voir, ajouter, modifier ou supprimer.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleAllPermissions}
+            style={{
+              padding: "6px 12px", borderRadius: 8, fontSize: 12, fontWeight: 700,
+              background: isAllSelected ? "#FEE2E2" : "#DCFCE7",
+              color: isAllSelected ? "#991B1B" : "#166534",
+              border: isAllSelected ? "1px solid #FECACA" : "1px solid #BBF7D0",
+              cursor: "pointer", display: "flex", alignItems: "center", gap: 6
+            }}
+          >
+            {isAllSelected ? <Square size={13} /> : <CheckSquare size={13} />}
+            {isAllSelected ? "Tout décocher" : "Tout cocher"}
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {PERMISSION_CATEGORIES.map((cat) => {
+            const CatIcon = cat.icon;
+            const catKeys = cat.permissions.map(p => p.key);
+            const activeInCat = catKeys.filter(k => (form.permissions || []).includes(k)).length;
+            const isCatAll = activeInCat === catKeys.length;
+
+            return (
+              <div 
+                key={cat.id} 
+                style={{
+                  background: "#fff",
+                  borderRadius: 14,
+                  border: "1px solid var(--line)",
+                  overflow: "hidden"
+                }}
+              >
+                {/* Header de la catégorie */}
+                <div 
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 14px", background: "rgba(0,0,0,0.02)", borderBottom: "1px solid var(--line)"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: cat.bg, color: cat.color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <CatIcon size={16} />
+                    </div>
+                    <div>
+                      <span style={{ fontWeight: 800, fontSize: 13, color: "var(--forest-dark)" }}>{cat.titre}</span>
+                      <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>({cat.desc})</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+                      background: activeInCat > 0 ? cat.bg : "var(--line)",
+                      color: activeInCat > 0 ? cat.color : "var(--muted)"
+                    }}>
+                      {activeInCat}/{cat.permissions.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleCategory(cat)}
+                      style={{
+                        padding: "3px 8px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                        background: "#fff", border: "1px solid var(--line)", color: "var(--forest-dark)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {isCatAll ? "Décocher" : "Cocher tout"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Grille des permissions de la catégorie */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, padding: 10 }}>
+                  {cat.permissions.map((item) => {
+                    const checked = (form.permissions || []).includes(item.key);
+
+                    return (
+                      <label
+                        key={item.key}
+                        onClick={() => togglePermissionKey(item.key)}
+                        style={{
+                          display: "flex", alignItems: "flex-start", gap: 10,
+                          padding: "8px 10px", borderRadius: 10,
+                          border: checked ? `1.5px solid ${cat.color}` : "1px solid var(--line)",
+                          background: checked ? cat.bg + "40" : "#fafafa",
+                          cursor: "pointer", transition: "all 0.12s"
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {}}
+                          style={{ width: 16, height: 16, marginTop: 2, accentColor: cat.color, cursor: "pointer" }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 12, fontWeight: checked ? 800 : 600, color: checked ? "var(--forest-dark)" : "var(--ink)" }}>
+                            {item.label}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 1, lineHeight: 1.25 }}>
+                            {item.desc}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   function copyCredentialsToClipboard() {
@@ -352,7 +586,7 @@ export default function AdminEmployees() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#fff", borderRadius: 20, padding: 32,
-              maxWidth: 640, width: "90%", maxHeight: "90vh", overflowY: "auto",
+              maxWidth: 780, width: "92%", maxHeight: "90vh", overflowY: "auto",
               boxShadow: "0 12px 40px rgba(0,0,0,0.2)"
             }}
           >
@@ -399,7 +633,13 @@ export default function AdminEmployees() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div className="bs-field">
                   <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 4 }}>Téléphone</label>
-                  <input className="bs-input" value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} placeholder="ex: +221 77 123 45 67" />
+                  <input
+                    type="tel"
+                    className="bs-input"
+                    value={form.telephone}
+                    onChange={(e) => setForm({ ...form, telephone: e.target.value.replace(/\D/g, "") })}
+                    placeholder="ex: 3341234 (chiffres uniquement)"
+                  />
                 </div>
 
                 <div className="bs-field" style={{ position: "relative" }}>
@@ -488,43 +728,7 @@ export default function AdminEmployees() {
 
               {/* GRANULAR PERMISSIONS MATRIX IF ROLE IS EMPLOYE */}
               {form.role === "employe" ? (
-                <div style={{ marginTop: 10, background: "var(--paper)", padding: 16, borderRadius: 14, border: "1px solid var(--line)" }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--forest-dark)", marginBottom: 10 }}>
-                    Attribuer les accès granulaires pour cet employé :
-                  </div>
-                  
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {PERMISSIONS_LIST.map((item) => {
-                      const checked = (form.permissions || []).includes(item.key);
-
-                      return (
-                        <label
-                          key={item.key}
-                          onClick={() => togglePermissionKey(item.key)}
-                          style={{
-                            display: "flex", alignItems: "flex-start", gap: 10,
-                            padding: 10, borderRadius: 10, border: "1px solid var(--line)",
-                            background: checked ? "#fff" : "transparent",
-                            cursor: "pointer"
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => {}}
-                            style={{ width: 16, height: 16, marginTop: 2, accentColor: "var(--forest)" }}
-                          />
-                          <div>
-                            <div style={{ fontSize: 12.5, fontWeight: checked ? 700 : 600, color: checked ? "var(--forest-dark)" : "var(--ink)" }}>
-                              {item.label}
-                            </div>
-                            <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.desc}</div>
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
+                renderPermissionsSelector()
               ) : (
                 <div style={{ background: "var(--forest-light)", borderRadius: 12, padding: 12, color: "var(--forest-dark)", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
                   <ShieldCheck size={18} color="var(--forest)" />
@@ -634,7 +838,7 @@ export default function AdminEmployees() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#fff", borderRadius: 20, padding: 32,
-              maxWidth: 540, width: "90%", maxHeight: "90vh", overflowY: "auto",
+              maxWidth: 780, width: "92%", maxHeight: "90vh", overflowY: "auto",
               boxShadow: "0 12px 40px rgba(0,0,0,0.2)"
             }}
           >
@@ -654,41 +858,7 @@ export default function AdminEmployees() {
               </div>
             )}
 
-            <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, marginBottom: 12 }}>
-              Activez ou désactivez les menus accessibles à cet employé :
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 340, overflowY: "auto", paddingRight: 4 }}>
-              {PERMISSIONS_LIST.map((item) => {
-                const checked = (form.permissions || []).includes(item.key);
-
-                return (
-                  <label
-                    key={item.key}
-                    onClick={() => togglePermissionKey(item.key)}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "12px 14px", borderRadius: 12, border: "1px solid var(--line)",
-                      background: checked ? "var(--forest-light)" : "#fff",
-                      cursor: "pointer", transition: "all 0.15s"
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 13.5, fontWeight: checked ? 700 : 500, color: checked ? "var(--forest-dark)" : "var(--ink)" }}>
-                        {item.label}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.desc}</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {}}
-                      style={{ width: 18, height: 18, accentColor: "var(--forest)", cursor: "pointer" }}
-                    />
-                  </label>
-                );
-              })}
-            </div>
+            {renderPermissionsSelector()}
 
             <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
               <button type="button" onClick={() => setModalType(null)} style={{ flex: 1, padding: "12px", borderRadius: 12, border: "1px solid var(--line)", background: "#fff", fontWeight: 600, cursor: "pointer" }}>
