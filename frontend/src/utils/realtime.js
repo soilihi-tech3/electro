@@ -1,31 +1,74 @@
 import { SLUG } from "../api";
 
 const getBaseUrl = () => {
-  let url = import.meta.env.VITE_API_URL;
-  if (typeof window !== "undefined") {
-    if (!url || url === "/" || url === "/api") {
-      return "/api";
-    }
-    if (url.startsWith("/")) {
-      return url.endsWith("/api") ? url : `${url}/api`.replace(/\/+/g, "/");
-    }
+  const isBrowser = typeof window !== "undefined";
+  const hostname = isBrowser && window.location.hostname ? window.location.hostname : "localhost";
+  const isLocal = hostname === "localhost" || hostname === "127.0.0.1";
+
+  if (isLocal) {
+    return import.meta.env.VITE_API_URL || `http://${hostname}:4000/api`;
   }
-  if (!url) {
-    const host = typeof window !== "undefined" && window.location.hostname ? window.location.hostname : "localhost";
-    url = `http://${host}:4000/api`;
-  }
-  url = url.trim().replace(/\/+$/, "");
-  if (!url.endsWith("/api")) {
-    url += "/api";
-  }
-  return url;
+
+  return "https://electro-backend-8hfq.onrender.com/api";
 };
+
+const REALTIME_EVENTS = [
+  "order_updated",
+  "order_created",
+  "order_deleted",
+  "product_updated",
+  "boutique_updated",
+  "category_updated",
+  "fournisseur_updated",
+  "achat_updated",
+  "unite_updated",
+  "marque_updated",
+  "user_updated",
+  "user_registered",
+  "sync_completed"
+];
 
 let eventSource = null;
 let reconnectTimer = null;
+let broadcastChannel = null;
+
+function initBroadcastChannel() {
+  if (typeof window === "undefined" || broadcastChannel || typeof BroadcastChannel === "undefined") return;
+  try {
+    broadcastChannel = new BroadcastChannel("easymarket_sync_channel");
+    broadcastChannel.onmessage = (event) => {
+      if (event?.data?.type) {
+        window.dispatchEvent(
+          new CustomEvent("app_realtime_event", {
+            detail: {
+              type: event.data.type,
+              data: event.data.data || {},
+              timestamp: event.data.timestamp || Date.now(),
+              fromChannel: true
+            }
+          })
+        );
+      }
+    };
+  } catch (e) {}
+}
+
+export function emitRealtimeEvent(type, data = {}) {
+  if (typeof window === "undefined") return;
+  const payload = { type, data, timestamp: Date.now() };
+  window.dispatchEvent(new CustomEvent("app_realtime_event", { detail: payload }));
+  try {
+    initBroadcastChannel();
+    if (broadcastChannel) {
+      broadcastChannel.postMessage(payload);
+    }
+  } catch (e) {}
+}
 
 export function initRealtimeSync() {
-  if (typeof window === "undefined" || eventSource) return;
+  if (typeof window === "undefined") return;
+  initBroadcastChannel();
+  if (eventSource) return;
 
   const streamUrl = `${getBaseUrl()}/store/${SLUG}/realtime/events`;
 
@@ -38,18 +81,12 @@ export function initRealtimeSync() {
         data = JSON.parse(e.data || "{}");
       } catch (err) {}
 
-      window.dispatchEvent(
-        new CustomEvent("app_realtime_event", {
-          detail: { type, data, timestamp: Date.now() }
-        })
-      );
+      emitRealtimeEvent(type, data);
     };
 
-    eventSource.addEventListener("order_updated", handleEvent("order_updated"));
-    eventSource.addEventListener("order_created", handleEvent("order_created"));
-    eventSource.addEventListener("product_updated", handleEvent("product_updated"));
-    eventSource.addEventListener("boutique_updated", handleEvent("boutique_updated"));
-    eventSource.addEventListener("category_updated", handleEvent("category_updated"));
+    REALTIME_EVENTS.forEach((evtName) => {
+      eventSource.addEventListener(evtName, handleEvent(evtName));
+    });
 
     eventSource.onerror = () => {
       if (eventSource) {

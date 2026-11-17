@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import api from "../api";
 import { getPendingActions, removeAction } from "../utils/offlineStorage";
+import { clearSwrCache } from "../utils/swrCache";
+import { emitRealtimeEvent } from "../utils/realtime";
 
 export const OfflineContext = createContext(null);
 
@@ -10,17 +12,24 @@ export function OfflineProvider({ children }) {
   const [pendingCount, setPendingCount] = useState(0);
   const [syncToast, setSyncToast] = useState(null);
 
-  const checkPending = async () => {
+  const checkPending = useCallback(async () => {
     const actions = await getPendingActions();
     setPendingCount(actions.length);
     return actions;
-  };
+  }, []);
 
   useEffect(() => {
     checkPending();
-  }, []);
+    const handleQueueUpdated = () => {
+      checkPending();
+    };
+    window.addEventListener("offline_queue_updated", handleQueueUpdated);
+    return () => {
+      window.removeEventListener("offline_queue_updated", handleQueueUpdated);
+    };
+  }, [checkPending]);
 
-  const syncOfflineQueue = async () => {
+  const syncOfflineQueue = useCallback(async () => {
     if (!navigator.onLine || isSyncing) return;
     const actions = await checkPending();
     if (actions.length === 0) return;
@@ -48,14 +57,16 @@ export function OfflineProvider({ children }) {
       }
     }
 
-    const remaining = await checkPending();
+    await checkPending();
     setIsSyncing(false);
 
     if (successCount > 0) {
-      setSyncToast(`Internet rétabli : ${successCount} action(s) synchronisée(s) avec succès !`);
+      clearSwrCache();
+      emitRealtimeEvent("sync_completed", { syncedCount: successCount });
+      setSyncToast(`Internet rétabli : ${successCount} action(s) synchronisée(s) sans actualiser !`);
       setTimeout(() => setSyncToast(null), 5000);
     }
-  };
+  }, [checkPending, isSyncing]);
 
   useEffect(() => {
     function handleOnline() {
@@ -64,6 +75,7 @@ export function OfflineProvider({ children }) {
     }
     function handleOffline() {
       setIsOnline(false);
+      checkPending();
     }
 
     window.addEventListener("online", handleOnline);
@@ -78,7 +90,7 @@ export function OfflineProvider({ children }) {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [syncOfflineQueue, checkPending]);
 
   return (
     <OfflineContext.Provider value={{ isOnline, isSyncing, pendingCount, syncOfflineQueue, syncToast }}>

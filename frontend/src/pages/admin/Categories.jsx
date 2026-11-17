@@ -61,7 +61,7 @@ export default function AdminCategories() {
   useEffect(() => {
     load();
     const unsub = subscribeRealtime((detail) => {
-      if (detail.type === "category_updated") {
+      if (detail.type === "category_updated" || detail.type === "sync_completed") {
         silentSyncCategories();
       }
     });

@@ -131,7 +131,7 @@ export default function Catalogue() {
 
   useEffect(() => {
     const unsub = subscribeRealtime((detail) => {
-      if (detail.type === "product_updated") {
+      if (detail.type === "product_updated" || detail.type === "sync_completed") {
         invalidate("products");
         loadProducts(true);
       } else if (detail.type === "category_updated") {

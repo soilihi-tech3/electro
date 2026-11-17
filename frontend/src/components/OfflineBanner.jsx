@@ -1,5 +1,5 @@
 import React from "react";
-import { WifiOff, Wifi, RefreshCw, CheckCircle2 } from "lucide-react";
+import { WifiOff, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useOffline } from "../context/OfflineContext.jsx";
 
 export default function OfflineBanner() {
@@ -13,7 +13,7 @@ export default function OfflineBanner() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
             <WifiOff size={18} className="bs-offline-pulse" />
             <span style={{ fontSize: 13, fontWeight: 700 }}>
-              Mode Hors Connexion : Navigation & commandes actives. Synchronisation automatique au retour du réseau.
+              Mode Hors Connexion : Navigation & actions actives. Synchronisation automatique au retour du réseau.
             </span>
           </div>
           {pendingCount > 0 && (
@@ -21,6 +21,34 @@ export default function OfflineBanner() {
               {pendingCount} action(s) en attente
             </span>
           )}
+        </div>
+      )}
+
+      {/* PENDING ACTIONS WHEN BACK ONLINE */}
+      {isOnline && !isSyncing && pendingCount > 0 && (
+        <div className="bs-offline-banner syncing" style={{ justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <RefreshCw size={16} />
+            <span style={{ fontSize: 13, fontWeight: 700 }}>
+              {pendingCount} action(s) hors ligne prête(s) à être synchronisée(s).
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={syncOfflineQueue}
+            style={{
+              background: "#fff",
+              color: "#0f172a",
+              border: "none",
+              borderRadius: 20,
+              padding: "4px 12px",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer"
+            }}
+          >
+            Synchroniser maintenant
+          </button>
         </div>
       )}
 

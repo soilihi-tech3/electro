@@ -25,6 +25,25 @@ function openDB() {
   });
 }
 
+function notifyQueueUpdated() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("offline_queue_updated"));
+  }
+}
+
+export function buildCacheKey(url, params) {
+  if (!url) return "";
+  if (!params || typeof params !== "object" || Object.keys(params).length === 0) {
+    return url;
+  }
+  const sortedKeys = Object.keys(params).sort();
+  const query = sortedKeys
+    .filter((k) => params[k] !== undefined && params[k] !== null && params[k] !== "")
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`)
+    .join("&");
+  return query ? `${url}?${query}` : url;
+}
+
 // ---- API DATA CACHING ----
 export async function saveCache(key, data) {
   try {
@@ -65,6 +84,45 @@ export async function getCache(key) {
   }
 }
 
+// Optimistically update cached list when offline POST/PUT/DELETE happens
+export async function applyOptimisticMutation(url, method, payload, tempId) {
+  if (!url) return null;
+  const upper = (method || "GET").toUpperCase();
+  // Determine base collection URL (e.g., /admin/fournisseurs/5 -> /admin/fournisseurs)
+  const parts = url.split("?")[0].split("/").filter(Boolean);
+  const lastSegment = parts[parts.length - 1];
+  const isItemUrl = upper === "PUT" || upper === "DELETE" || /^\d+$|^offline_temp_/.test(lastSegment);
+  const collectionUrl = isItemUrl ? "/" + parts.slice(0, -1).join("/") : "/" + parts.join("/");
+  const itemId = isItemUrl ? lastSegment : tempId;
+
+  try {
+    const current = await getCache(collectionUrl);
+    if (Array.isArray(current)) {
+      let updated = [...current];
+      if (upper === "POST") {
+        const newItem = {
+          id: tempId || `offline_temp_${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          ...(payload && typeof payload === "object" ? payload : {}),
+          offline: true
+        };
+        updated = [newItem, ...updated];
+      } else if (upper === "PUT") {
+        updated = updated.map((item) =>
+          String(item.id) === String(itemId)
+            ? { ...item, ...(payload && typeof payload === "object" ? payload : {}), offline: true }
+            : item
+        );
+      } else if (upper === "DELETE") {
+        updated = updated.filter((item) => String(item.id) !== String(itemId));
+      }
+      await saveCache(collectionUrl, updated);
+      return updated;
+    }
+  } catch (e) {}
+  return null;
+}
+
 // ---- QUEUE MANAGEMENT FOR MUTATIONS (POST/PUT/DELETE) ----
 export async function enqueueAction(action) {
   const item = {
@@ -81,6 +139,7 @@ export async function enqueueAction(action) {
     queue.push(item);
     localStorage.setItem("offline_sync_queue", JSON.stringify(queue));
   }
+  notifyQueueUpdated();
   return item;
 }
 
@@ -120,6 +179,7 @@ export async function removeAction(id) {
     const filtered = queue.filter(item => item.id !== id);
     localStorage.setItem("offline_sync_queue", JSON.stringify(filtered));
   } catch (e) {}
+  notifyQueueUpdated();
 }
 
 export async function clearQueue() {
@@ -129,4 +189,5 @@ export async function clearQueue() {
     tx.objectStore(QUEUE_STORE).clear();
   } catch (e) {}
   localStorage.removeItem("offline_sync_queue");
+  notifyQueueUpdated();
 }

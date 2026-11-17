@@ -10,6 +10,7 @@ import { toast } from "react-hot-toast";
 import api from "../../api";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { formatPrice } from "../../utils/currency.js";
+import { subscribeRealtime } from "../../utils/realtime.js";
 
 const MONTHS = [
   { value: "1", label: "Janvier" },
@@ -73,6 +74,22 @@ export default function Bilan() {
 
   useEffect(() => {
     fetchBilan();
+  }, [annee, mois, employeId, periode]);
+
+  useEffect(() => {
+    const unsub = subscribeRealtime((detail) => {
+      if (
+        detail.type === "order_created" ||
+        detail.type === "order_updated" ||
+        detail.type === "order_deleted" ||
+        detail.type === "achat_updated" ||
+        detail.type === "product_updated" ||
+        detail.type === "sync_completed"
+      ) {
+        fetchBilan();
+      }
+    });
+    return unsub;
   }, [annee, mois, employeId, periode]);
 
   const kpis = data?.kpis || {

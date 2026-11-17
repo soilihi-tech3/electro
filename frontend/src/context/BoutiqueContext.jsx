@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api, { SLUG } from "../api";
+import { subscribeRealtime } from "../utils/realtime";
 
 const BoutiqueContext = createContext(null);
 
@@ -96,6 +97,12 @@ export function BoutiqueProvider({ children }) {
 
   useEffect(() => {
     refreshBoutique();
+    const unsub = subscribeRealtime((detail) => {
+      if (detail.type === "boutique_updated" || detail.type === "sync_completed") {
+        refreshBoutique();
+      }
+    });
+    return unsub;
   }, []);
 
   return (

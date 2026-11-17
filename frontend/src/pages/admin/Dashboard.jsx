@@ -83,9 +83,13 @@ export default function Dashboard() {
       if (
         detail.type === "order_created" ||
         detail.type === "order_updated" ||
+        detail.type === "order_deleted" ||
         detail.type === "product_updated" ||
         detail.type === "category_updated" ||
-        detail.type === "user_registered"
+        detail.type === "achat_updated" ||
+        detail.type === "user_updated" ||
+        detail.type === "user_registered" ||
+        detail.type === "sync_completed"
       ) {
         loadDashboard(periode);
       }

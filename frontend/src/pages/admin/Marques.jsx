@@ -5,6 +5,7 @@ import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import ImageUploader from "../../components/ImageUploader";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeRealtime } from "../../utils/realtime";
 
 export default function Marques() {
   const { hasPerm } = useAuth();
@@ -28,7 +29,19 @@ export default function Marques() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const unsub = subscribeRealtime((detail) => {
+      if (
+        detail.type === "marque_updated" ||
+        detail.type === "boutique_updated" ||
+        detail.type === "sync_completed"
+      ) {
+        load();
+      }
+    });
+    return unsub;
+  }, []);
 
   const filteredMarques = marques.filter(m => {
     const q = search.trim().toLowerCase();

@@ -4,6 +4,7 @@ import { PlusCircle, Edit, Trash2, Scale, X, CheckCircle, AlertCircle } from "lu
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeRealtime } from "../../utils/realtime";
 
 export default function UnitesVente() {
   const { hasPerm } = useAuth();
@@ -23,7 +24,15 @@ export default function UnitesVente() {
       .catch(() => {});
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const unsub = subscribeRealtime((detail) => {
+      if (detail.type === "unite_updated" || detail.type === "sync_completed") {
+        load();
+      }
+    });
+    return unsub;
+  }, []);
 
   function openCreateModal() {
     setForm({ nom: "", abbreviation: "" });

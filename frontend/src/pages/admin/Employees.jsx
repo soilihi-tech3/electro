@@ -9,6 +9,7 @@ import {
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { subscribeRealtime } from "../../utils/realtime.js";
 
 export const PERMISSION_CATEGORIES = [
   {
@@ -114,7 +115,19 @@ export default function AdminEmployees() {
       .catch(() => {}); 
   }
   
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const unsub = subscribeRealtime((detail) => {
+      if (
+        detail.type === "user_updated" ||
+        detail.type === "user_registered" ||
+        detail.type === "sync_completed"
+      ) {
+        load();
+      }
+    });
+    return unsub;
+  }, []);
 
   function generateRandomPassword() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$";

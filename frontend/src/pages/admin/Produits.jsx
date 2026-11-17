@@ -97,7 +97,14 @@ export default function AdminProduits() {
   useEffect(() => {
     load();
     const unsub = subscribeRealtime((detail) => {
-      if (detail.type === "product_updated" || detail.type === "category_updated") {
+      if (
+        detail.type === "product_updated" ||
+        detail.type === "category_updated" ||
+        detail.type === "fournisseur_updated" ||
+        detail.type === "unite_updated" ||
+        detail.type === "marque_updated" ||
+        detail.type === "sync_completed"
+      ) {
         silentSyncProducts();
       }
     });

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { saveCache, getCache, enqueueAction } from "./utils/offlineStorage";
+import { saveCache, getCache, enqueueAction, buildCacheKey, applyOptimisticMutation } from "./utils/offlineStorage";
 
 const getBaseUrl = () => {
   const isBrowser = typeof window !== "undefined";
@@ -30,9 +30,13 @@ api.interceptors.request.use((config) => {
 // Response Interceptor for Offline Mode Data Caching & Auto Queueing
 api.interceptors.response.use(
   async (response) => {
-    // Cache GET request data for offline usage
-    if (response.config.method?.toUpperCase() === "GET" && response.data) {
-      saveCache(response.config.url, response.data);
+    // Cache GET request data for offline usage (including query params)
+    if (response.config.method?.toUpperCase() === "GET" && response.data !== undefined) {
+      const cacheKey = buildCacheKey(response.config.url, response.config.params);
+      saveCache(cacheKey, response.data);
+      if (cacheKey !== response.config.url) {
+        saveCache(response.config.url, response.data);
+      }
     }
     return response;
   },
@@ -45,7 +49,11 @@ api.interceptors.response.use(
 
       if (method === "GET") {
         // Return cached GET data if offline
-        const cachedData = await getCache(config.url);
+        const cacheKey = buildCacheKey(config.url, config.params);
+        let cachedData = await getCache(cacheKey);
+        if ((cachedData === null || cachedData === undefined) && cacheKey !== config.url) {
+          cachedData = await getCache(config.url);
+        }
         if (cachedData !== null && cachedData !== undefined) {
           return { data: cachedData, status: 200, statusText: "OK", headers: {}, config, offline: true };
         }
@@ -60,18 +68,22 @@ api.interceptors.response.use(
           }
         }
 
+        const tempId = `offline_temp_${Date.now()}`;
         await enqueueAction({
           url: config.url,
           method,
           data: parsedData
         });
 
+        await applyOptimisticMutation(config.url, method, parsedData, tempId);
+
         // Return a mock successful response to keep user flow seamless
         return {
           data: {
-            id: `offline_temp_${Date.now()}`,
+            id: tempId,
+            ...(parsedData && typeof parsedData === "object" ? parsedData : {}),
             total: parsedData?.total || 0,
-            statut: "validee",
+            statut: parsedData?.statut || "validee",
             message: "Enregistré hors ligne. Synchronisation automatique au retour du réseau.",
             offline: true
           },

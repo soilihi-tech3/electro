@@ -95,10 +95,11 @@ export default function AdminSettings({ defaultTab = "general" }) {
   function addSlide() {
     const newSlide = {
       id: Date.now(),
-      title: "Nouvelle diapositive",
-      subtitle: "Offres fraîches du jour",
-      imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1600&q=80",
-      buttonText: "Découvrir le marché",
+      tag: "Matériel électrique pro",
+      title: "Câbles & Prises. Qualité Pro.",
+      subtitle: "Fils de toutes sections, prises, interrupteurs et disjoncteurs : tout pour vos installations, aux meilleurs prix.",
+      imageUrl: "",
+      buttonText: "Voir le catalogue",
       categoryId: categories[0]?.id || ""
     };
     set("bannerSlides", [...slidesList, newSlide]);
@@ -499,10 +500,15 @@ export default function AdminSettings({ defaultTab = "general" }) {
                 </button>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 12 }}>
+                <div className="bs-field">
+                  <label>Badge / Étiquette (Tag)</label>
+                  <input className="bs-input" value={slide.tag || ""} onChange={(e) => updateSlide(idx, "tag", e.target.value)} placeholder="Ex: Matériel électrique pro" />
+                </div>
+
                 <div className="bs-field">
                   <label>Titre principal</label>
-                  <input className="bs-input" value={slide.title || ""} onChange={(e) => updateSlide(idx, "title", e.target.value)} />
+                  <input className="bs-input" value={slide.title || ""} onChange={(e) => updateSlide(idx, "title", e.target.value)} placeholder="Ex: Câbles & Prises. Qualité Pro." />
                 </div>
 
                 <div className="bs-field">

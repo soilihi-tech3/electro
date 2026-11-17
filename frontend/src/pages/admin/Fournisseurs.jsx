@@ -4,6 +4,7 @@ import { PlusCircle, Edit, Trash2, Building, Phone, Mail, MapPin, X, CheckCircle
 import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeRealtime, emitRealtimeEvent } from "../../utils/realtime";
 
 export default function Fournisseurs() {
   const { hasPerm } = useAuth();
@@ -24,7 +25,15 @@ export default function Fournisseurs() {
       .catch(() => {});
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const unsub = subscribeRealtime((detail) => {
+      if (detail.type === "fournisseur_updated" || detail.type === "sync_completed") {
+        load();
+      }
+    });
+    return unsub;
+  }, []);
 
   const filteredFournisseurs = fournisseurs.filter(f => {
     const q = search.trim().toLowerCase();

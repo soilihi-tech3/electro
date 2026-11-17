@@ -133,12 +133,12 @@ export default function VenteDirecte() {
   useEffect(() => {
     load();
     const unsub = subscribeRealtime((detail) => {
-      if (detail.type === "product_updated") {
+      if (detail.type === "product_updated" || detail.type === "sync_completed") {
         api.get("/admin/products?pos=true").then(res => {
           const prods = Array.isArray(res.data) ? res.data : (res.data?.products || []);
           setProducts(prods);
         }).catch(() => {});
-      } else if (detail.type === "order_created" || detail.type === "order_updated") {
+      } else if (detail.type === "order_created" || detail.type === "order_updated" || detail.type === "order_deleted") {
         if (devisModalOpen) loadDevis();
       }
     });

@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 
 import { formatPrice as fcfa } from "../../utils/currency.js";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeRealtime } from "../../utils/realtime";
 
 export default function Achats() {
   const { hasPerm } = useAuth();
@@ -30,7 +31,20 @@ export default function Achats() {
     api.get("/admin/fournisseurs").then(res => setFournisseurs(res.data || []));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    const unsub = subscribeRealtime((detail) => {
+      if (
+        detail.type === "achat_updated" ||
+        detail.type === "product_updated" ||
+        detail.type === "fournisseur_updated" ||
+        detail.type === "sync_completed"
+      ) {
+        load();
+      }
+    });
+    return unsub;
+  }, []);
 
   const filteredAchats = achats.filter(a => {
     const q = search.trim().toLowerCase();

@@ -6,6 +6,7 @@ import api from "../../api";
 import TablePagination from "../../components/TablePagination";
 import { useCart } from "../../context/CartContext.jsx";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeRealtime } from "../../utils/realtime";
 
 export default function AdminClients() {
   const { hasPerm } = useAuth();
@@ -35,6 +36,16 @@ export default function AdminClients() {
 
   useEffect(() => {
     loadClients();
+    const unsub = subscribeRealtime((detail) => {
+      if (
+        detail.type === "user_updated" ||
+        detail.type === "user_registered" ||
+        detail.type === "sync_completed"
+      ) {
+        loadClients();
+      }
+    });
+    return unsub;
   }, []);
 
   function openCreateModal() {

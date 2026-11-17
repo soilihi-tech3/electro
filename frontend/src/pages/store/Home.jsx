@@ -5,33 +5,7 @@ import api, { SLUG } from "../../api";
 import ProductCard from "../../components/ProductCard.jsx";
 import { subscribeRealtime } from "../../utils/realtime.js";
 import { useData } from "../../context/DataContext.jsx";
-
-const DEFAULT_SLIDES = [
-  {
-    id: 1,
-    title: "Électricité, Électronique & Matériel Pro",
-    subtitle: "Large gamme d'accessoires électriques, prises, disjoncteurs et câblage haute sécurité.",
-    imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=1600&q=80",
-    buttonText: "Découvrir le catalogue",
-    linkUrl: "/catalogue"
-  },
-  {
-    id: 2,
-    title: "Climatisation & Ventilation Haute Performance",
-    subtitle: "Climatiseurs split Inverter et ventilateurs puissants pour un confort thermique optimal.",
-    imageUrl: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1600&q=80",
-    buttonText: "Voir les climatiseurs",
-    linkUrl: "/catalogue"
-  },
-  {
-    id: 3,
-    title: "Outillage & Équipements de Construction",
-    subtitle: "Tout pour vos chantiers, installations électriques et travaux de bâtiment.",
-    imageUrl: "https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?auto=format&fit=crop&w=1600&q=80",
-    buttonText: "Commander maintenant",
-    linkUrl: "/catalogue"
-  }
-];
+import { DEFAULT_SLIDES } from "../../utils/defaultBannerSlides.js";
 
 const parseSlides = (bannerSlides) => {
   if (!bannerSlides) return DEFAULT_SLIDES;
@@ -44,12 +18,15 @@ const parseSlides = (bannerSlides) => {
     }
   }
   if (Array.isArray(parsed) && parsed.length > 0) {
-    // Purge old grocery/cosmetics demo cache from before electrical conversion
+    // Purge old grocery/cosmetics or default seed Unsplash URLs so home-banner.html default slides appear unless customized
     const isOldDemo = parsed.some(s => 
       s.title?.toLowerCase().includes("cosmétique") || 
       s.title?.toLowerCase().includes("beauté") || 
       s.title?.toLowerCase().includes("légume") ||
-      s.imageUrl?.includes("photo-1542838132")
+      s.imageUrl?.includes("photo-1542838132") ||
+      s.imageUrl?.includes("photo-1581092160607") ||
+      s.imageUrl?.includes("photo-1621905252507") ||
+      s.imageUrl?.includes("photo-1504917599217")
     );
     if (isOldDemo) {
       return DEFAULT_SLIDES;
@@ -58,6 +35,54 @@ const parseSlides = (bannerSlides) => {
   }
   return DEFAULT_SLIDES;
 };
+
+function renderSlideTitle(slide) {
+  const rawTitle = (slide?.title || "").trim();
+  if (slide?.titleHighlight) {
+    return (
+      <>
+        {rawTitle}
+        <br />
+        <span>{slide.titleHighlight}</span>
+      </>
+    );
+  }
+  if (!rawTitle) return null;
+  if (rawTitle.includes("\n") || rawTitle.includes("|")) {
+    const parts = rawTitle.split(/\n|\|/).map(s => s.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      return (
+        <>
+          {parts[0]}
+          <br />
+          <span>{parts.slice(1).join(" ")}</span>
+        </>
+      );
+    }
+  }
+  const dotIdx = rawTitle.indexOf(". ");
+  if (dotIdx !== -1 && dotIdx < rawTitle.length - 2) {
+    return (
+      <>
+        {rawTitle.slice(0, dotIdx + 1)}
+        <br />
+        <span>{rawTitle.slice(dotIdx + 2)}</span>
+      </>
+    );
+  }
+  const words = rawTitle.split(/\s+/);
+  if (words.length >= 3) {
+    const splitAt = Math.ceil(words.length / 2);
+    return (
+      <>
+        {words.slice(0, splitAt).join(" ")}
+        <br />
+        <span>{words.slice(splitAt).join(" ")}</span>
+      </>
+    );
+  }
+  return rawTitle;
+}
 
 const parseBanners = (banners) => {
   if (!banners) return [];
@@ -194,6 +219,7 @@ export default function Home() {
   });
 
   const [activeSlide, setActiveSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const navigate = useNavigate();
 
   function loadData(force = false) {
@@ -242,7 +268,8 @@ export default function Home() {
       if (
         detail.type === "product_updated" ||
         detail.type === "category_updated" ||
-        detail.type === "boutique_updated"
+        detail.type === "boutique_updated" ||
+        detail.type === "sync_completed"
       ) {
         invalidate("products");
         invalidate("categories");
@@ -256,13 +283,19 @@ export default function Home() {
   const sideBanners = parseBanners(boutique?.sideBanners);
 
   useEffect(() => {
+    if (activeSlide >= slides.length && slides.length > 0) {
+      setActiveSlide(0);
+    }
+  }, [slides.length, activeSlide]);
+
+  useEffect(() => {
     const total = slides.length;
-    if (total <= 1) return;
+    if (total <= 1 || isPaused) return;
     const timer = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % total);
     }, 5000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [slides.length, isPaused, activeSlide]);
 
   const safeProducts = Array.isArray(products) ? products : [];
   const safeCategories = Array.isArray(categories) ? categories : [];
@@ -319,73 +352,123 @@ export default function Home() {
 
   return (
     <>
-      {/* ---- HERO SLIDER DYNAMIQUE ADMIN (ANIMATION SLIDE HORIZONTALE ET CHARGEMENT INSTANTANÉ) ---- */}
-      <div className="bs-slider">
-        <div 
-          className="bs-slider-track"
-          style={{
-            display: "flex",
-            width: `${slides.length * 100}%`,
-            height: "100%",
-            transform: `translateX(-${(activeSlide * 100) / slides.length}%)`,
-            transition: "transform 0.65s cubic-bezier(0.25, 1, 0.5, 1)"
-          }}
-        >
-          {slides.map((slide, idx) => (
-            <div 
-              key={slide.id || idx} 
-              className="bs-slide-item"
-              style={{
-                width: `${100 / slides.length}%`,
-                backgroundImage: `url(${slide.imageUrl})`,
-                cursor: "pointer"
-              }}
-              onClick={() => handleBannerClick(slide)}
+      {/* ---- HERO BANNER DYNAMIQUE (DESIGN HOME-BANNER.HTML) ---- */}
+      <section
+        className="hb-hero"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+      >
+        {slides.map((slide, idx) => {
+          const isActive = idx === activeSlide;
+          const matchedCategory = slide.categoryId
+            ? safeCategories.find((c) => String(c.id) === String(slide.categoryId))
+            : null;
+          const tagLabel =
+            slide.tag ||
+            slide.badge ||
+            matchedCategory?.nom ||
+            boutique?.nom ||
+            "Matériel électrique pro";
+
+          return (
+            <article
+              key={slide.id || idx}
+              className={`hb-slide ${isActive ? "active" : ""}`}
             >
-              <div className="bs-slide-overlay"></div>
-              <div className="bs-slide-content">
-                <h1>{slide.title}</h1>
-                <p>{slide.subtitle}</p>
-                <button 
-                  className="bs-slide-btn" 
-                  onClick={(e) => { e.stopPropagation(); handleBannerClick(slide); }}
+              <div className="hb-text">
+                <span className="hb-tag">
+                  <b></b>
+                  {tagLabel}
+                </span>
+                <h1>{renderSlideTitle(slide)}</h1>
+                {slide.subtitle && <p>{slide.subtitle}</p>}
+                <button
+                  type="button"
+                  className="hb-btn"
+                  onClick={() => handleBannerClick(slide)}
                 >
-                  {slide.buttonText || "Découvrir"} <ArrowRight size={16} />
+                  {slide.buttonText || "Voir le catalogue"}{" "}
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="20"
+                    height="20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg>
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
+              <div
+                className="hb-photo"
+                style={{ background: slide.photoBg || "#ffffff", cursor: "pointer" }}
+                onClick={() => handleBannerClick(slide)}
+              >
+                <img
+                  src={slide.imageUrl}
+                  alt={slide.title || tagLabel}
+                  style={{
+                    "--r": slide.aspectRatio || "735/490",
+                    "--f": slide.feather || "7%"
+                  }}
+                  onLoad={(e) => {
+                    if (!slide.aspectRatio && e.currentTarget.naturalWidth && e.currentTarget.naturalHeight) {
+                      e.currentTarget.style.setProperty(
+                        "--r",
+                        `${e.currentTarget.naturalWidth}/${e.currentTarget.naturalHeight}`
+                      );
+                    }
+                  }}
+                />
+              </div>
+            </article>
+          );
+        })}
 
         {slides.length > 1 && (
           <>
-            <button 
-              className="bs-slider-arrow left" 
-              onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length); }}
-              aria-label="Diapositive précédente"
+            <button
+              type="button"
+              className="hb-arrow prev"
+              aria-label="Précédent"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveSlide((prev) => (prev - 1 + slides.length) % slides.length);
+              }}
             >
-              <ChevronLeft size={22} />
+              ‹
             </button>
-            <button 
-              className="bs-slider-arrow right" 
-              onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev + 1) % slides.length); }}
-              aria-label="Diapositive suivante"
+            <button
+              type="button"
+              className="hb-arrow next"
+              aria-label="Suivant"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveSlide((prev) => (prev + 1) % slides.length);
+              }}
             >
-              <ChevronRight size={22} />
+              ›
             </button>
-
-            <div className="bs-slider-dots">
+            <div className="hb-dots">
               {slides.map((_, idx) => (
-                <div 
-                  key={idx} 
-                  className={`bs-slider-dot ${idx === activeSlide ? "active" : ""}`}
-                  onClick={(e) => { e.stopPropagation(); setActiveSlide(idx); }}
-                ></div>
+                <button
+                  key={idx}
+                  type="button"
+                  className={idx === activeSlide ? "active" : ""}
+                  aria-label={`Slide ${idx + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSlide(idx);
+                  }}
+                />
               ))}
             </div>
           </>
         )}
-      </div>
+      </section>
 
       {/* ---- CATÉGORIES VISUELLES ---- */}
       <div className="bs-section-title">

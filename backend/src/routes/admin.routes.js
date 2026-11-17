@@ -1078,6 +1078,7 @@ router.post("/employees", requireRole("admin"), async (req, res, next) => {
       generatedPassword: rawPassword,
       mustChangePassword: true
     });
+    broadcast("user_updated", { userId: user.id, role: user.role, boutiqueId: req.boutiqueId });
   } catch (err) { next(err); }
 });
 
@@ -1113,6 +1114,7 @@ router.put("/employees/:id", requireRole("admin"), async (req, res, next) => {
     }
 
     await targetUser.save();
+    broadcast("user_updated", { userId: targetUser.id, role: targetUser.role, boutiqueId: req.boutiqueId });
     res.json({ 
       id: targetUser.id, nom: targetUser.nom, email: targetUser.email, telephone: targetUser.telephone, 
       role: targetUser.role, permissions: targetUser.permissions, statut: targetUser.statut 
@@ -1133,6 +1135,7 @@ router.patch("/employees/:id/status", requireRole("admin"), async (req, res, nex
 
     const nouveauStatut = targetUser.statut === "actif" ? "suspendu" : "actif";
     await targetUser.update({ statut: nouveauStatut });
+    broadcast("user_updated", { userId: targetUser.id, role: targetUser.role, boutiqueId: req.boutiqueId });
     res.json(targetUser);
   } catch (err) { next(err); }
 });
@@ -1160,6 +1163,7 @@ router.delete("/employees/:id", requireRole("admin"), async (req, res, next) => 
     }
 
     await targetUser.destroy();
+    broadcast("user_updated", { userId: req.params.id, boutiqueId: req.boutiqueId });
     res.json({ message: "Utilisateur supprimé avec succès." });
   } catch (err) { next(err); }
 });
@@ -1203,6 +1207,7 @@ router.post("/clients", requirePerm("gerer_clients"), async (req, res, next) => 
       isEmailVerified: true
     });
 
+    broadcast("user_updated", { userId: client.id, role: "client", boutiqueId: req.boutiqueId });
     res.status(201).json({
       id: client.id, nom: client.nom, email: client.email, telephone: client.telephone,
       role: client.role, statut: client.statut, isEmailVerified: client.isEmailVerified
@@ -1226,6 +1231,7 @@ router.put("/clients/:id", requirePerm("gerer_clients"), async (req, res, next) 
     }
 
     await client.save();
+    broadcast("user_updated", { userId: client.id, role: "client", boutiqueId: req.boutiqueId });
     res.json({
       id: client.id, nom: client.nom, email: client.email, telephone: client.telephone,
       role: client.role, statut: client.statut, isEmailVerified: client.isEmailVerified
@@ -1240,6 +1246,7 @@ router.patch("/clients/:id/status", requirePerm("gerer_clients"), async (req, re
 
     const nouveauStatut = client.statut === "actif" ? "suspendu" : "actif";
     await client.update({ statut: nouveauStatut });
+    broadcast("user_updated", { userId: client.id, role: "client", boutiqueId: req.boutiqueId });
     res.json({ id: client.id, nom: client.nom, statut: client.statut });
   } catch (err) { next(err); }
 });
@@ -1259,6 +1266,7 @@ router.delete("/clients/:id", requirePerm("gerer_clients"), async (req, res, nex
     }
 
     await client.destroy();
+    broadcast("user_updated", { userId: req.params.id, role: "client", boutiqueId: req.boutiqueId });
     res.json({ message: "Compte client supprimé avec succès." });
   } catch (err) { next(err); }
 });
@@ -1737,6 +1745,7 @@ router.post("/fournisseurs", requirePerm("gerer_fournisseurs"), async (req, res,
   try {
     const fourn = await Fournisseur.create({ ...req.body, boutiqueId: req.boutiqueId });
     purgeCache();
+    broadcast("fournisseur_updated", { fournisseurId: fourn.id, boutiqueId: req.boutiqueId });
     res.status(201).json(fourn);
   } catch (err) { next(err); }
 });
@@ -1747,6 +1756,7 @@ router.put("/fournisseurs/:id", requirePerm("gerer_fournisseurs"), async (req, r
     if (!fourn) return res.status(404).json({ message: "Fournisseur introuvable." });
     await fourn.update(req.body);
     purgeCache();
+    broadcast("fournisseur_updated", { fournisseurId: fourn.id, boutiqueId: req.boutiqueId });
     res.json(fourn);
   } catch (err) { next(err); }
 });
@@ -1757,6 +1767,7 @@ router.delete("/fournisseurs/:id", requirePerm("gerer_fournisseurs"), async (req
     if (!fourn) return res.status(404).json({ message: "Fournisseur introuvable." });
     await fourn.destroy();
     purgeCache();
+    broadcast("fournisseur_updated", { fournisseurId: req.params.id, boutiqueId: req.boutiqueId });
     res.json({ message: "Fournisseur supprimé." });
   } catch (err) { next(err); }
 });
@@ -1792,6 +1803,7 @@ router.post("/unites", requirePerm("gerer_unites"), async (req, res, next) => {
   try {
     const unite = await UniteVente.create({ ...req.body, boutiqueId: req.boutiqueId });
     purgeCache();
+    broadcast("unite_updated", { uniteId: unite.id, boutiqueId: req.boutiqueId });
     res.status(201).json(unite);
   } catch (err) { next(err); }
 });
@@ -1802,6 +1814,7 @@ router.put("/unites/:id", requirePerm("gerer_unites"), async (req, res, next) =>
     if (!unite) return res.status(404).json({ message: "Unité introuvable." });
     await unite.update(req.body);
     purgeCache();
+    broadcast("unite_updated", { uniteId: unite.id, boutiqueId: req.boutiqueId });
     res.json(unite);
   } catch (err) { next(err); }
 });
@@ -1812,6 +1825,7 @@ router.delete("/unites/:id", requirePerm("gerer_unites"), async (req, res, next)
     if (!unite) return res.status(404).json({ message: "Unité introuvable." });
     await unite.destroy();
     purgeCache();
+    broadcast("unite_updated", { uniteId: req.params.id, boutiqueId: req.boutiqueId });
     res.json({ message: "Unité supprimée." });
   } catch (err) { next(err); }
 });
@@ -1862,6 +1876,7 @@ router.post("/achats", requirePerm("gerer_achats"), async (req, res, next) => {
     await prod.save();
     purgeCache();
     broadcast("product_updated", { productId: prod.id, boutiqueId: req.boutiqueId });
+    broadcast("achat_updated", { achatId: achat.id, boutiqueId: req.boutiqueId });
 
     const fullAchat = await Achat.findByPk(achat.id, {
       include: [
@@ -1907,6 +1922,7 @@ router.put("/achats/:id", requirePerm("gerer_achats"), async (req, res, next) =>
         broadcast("product_updated", { productId: prod.id, boutiqueId: req.boutiqueId });
       }
     }
+    broadcast("achat_updated", { achatId: achat.id, boutiqueId: req.boutiqueId });
 
     const fullAchat = await Achat.findByPk(achat.id, {
       include: [
@@ -1935,6 +1951,7 @@ router.delete("/achats/:id", requirePerm("gerer_achats"), async (req, res, next)
     }
 
     await achat.destroy();
+    broadcast("achat_updated", { achatId: req.params.id, boutiqueId: req.boutiqueId });
     res.json({ message: "Achat supprimé avec succès." });
   } catch (err) { next(err); }
 });
@@ -1968,6 +1985,7 @@ router.post("/marques", requirePerm("gerer_marques"), async (req, res, next) => 
       boutiqueId: req.boutiqueId
     });
     purgeCache();
+    broadcast("marque_updated", { marqueId: marque.id, boutiqueId: req.boutiqueId });
     broadcast("boutique_updated", { boutiqueId: req.boutiqueId });
     res.status(201).json(marque);
   } catch (err) { next(err); }
@@ -1979,6 +1997,7 @@ router.put("/marques/:id", requirePerm("gerer_marques"), async (req, res, next) 
     if (!marque) return res.status(404).json({ message: "Marque introuvable." });
     await marque.update(req.body);
     purgeCache();
+    broadcast("marque_updated", { marqueId: marque.id, boutiqueId: req.boutiqueId });
     broadcast("boutique_updated", { boutiqueId: req.boutiqueId });
     res.json(marque);
   } catch (err) { next(err); }
@@ -1991,6 +2010,7 @@ router.delete("/marques/:id", requirePerm("gerer_marques"), async (req, res, nex
     await Product.update({ marqueId: null }, { where: { marqueId: marque.id, boutiqueId: req.boutiqueId } });
     await marque.destroy();
     purgeCache();
+    broadcast("marque_updated", { marqueId: req.params.id, boutiqueId: req.boutiqueId });
     broadcast("boutique_updated", { boutiqueId: req.boutiqueId });
     res.json({ message: "Marque supprimée avec succès." });
   } catch (err) { next(err); }
